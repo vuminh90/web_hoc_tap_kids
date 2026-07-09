@@ -1,0 +1,1350 @@
+{
+  "vuanhduc": {
+    "points": 156,
+    "pointsHistory": [
+      {
+        "date": "2026-07-09T15:37:07.546Z",
+        "amount": 15,
+        "reason": "Kiểm tra Toán (algebra)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T07:42:22.867Z",
+        "amount": 4,
+        "reason": "Kiểm tra Toán Lvl.1 (probability)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T07:42:09.898Z",
+        "amount": 10,
+        "reason": "Kiểm tra Toán Lvl.1 (logic)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T07:38:15.322Z",
+        "amount": 5,
+        "reason": "Môn Tiếng Việt Lvl.1 (grammar)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-09T07:34:07.329Z",
+        "amount": 3,
+        "reason": "Kiểm tra Toán Lvl.2 (algebra)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T07:30:14.927Z",
+        "amount": 2,
+        "reason": "Kiểm tra Toán Lvl.3 (algebra)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T03:20:11.787Z",
+        "amount": 12,
+        "reason": "Kiểm tra Toán Lvl.2 (geometry)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T16:15:22.904Z",
+        "amount": 4,
+        "reason": "Môn Tiếng Việt Lvl.1 (grammar)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:13:04.768Z",
+        "amount": 12,
+        "reason": "Môn Tiếng Việt Lvl.1 (grammar)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:09:56.104Z",
+        "amount": 8,
+        "reason": "Môn Tiếng Việt Lvl.1 (reading)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:09:16.691Z",
+        "amount": 9,
+        "reason": "Môn Tiếng Việt Lvl.1 (reading)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T15:58:47.987Z",
+        "amount": 5,
+        "reason": "Kiểm tra Toán Lvl.2 (all)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:52:14.731Z",
+        "amount": 8,
+        "reason": "Kiểm tra Toán Lvl.1 (algebra)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:49:54.978Z",
+        "amount": 3,
+        "reason": "Kiểm tra Toán Lvl.2 (all)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:47:01.804Z",
+        "amount": 4,
+        "reason": "Kiểm tra Toán Lvl.3 (algebra)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:32:50.281Z",
+        "amount": 8,
+        "reason": "Kiểm tra Toán Lvl.2 (all)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:29:13.277Z",
+        "amount": 6,
+        "reason": "Kiểm tra Toán Lvl.3 (probability)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:26:01.228Z",
+        "amount": 3,
+        "reason": "Kiểm tra Toán Lvl.3 (geometry)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:22:05.418Z",
+        "amount": 7,
+        "reason": "Kiểm tra Toán Lvl.2 (geometry)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:19:44.593Z",
+        "amount": 4,
+        "reason": "Kiểm tra Toán Lvl.3 (logic)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T14:11:25.101Z",
+        "amount": 12,
+        "reason": "Kiểm tra Toán Lvl.2 (geometry)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T14:00:43.303Z",
+        "amount": 12,
+        "reason": "Kiểm tra Toán Lvl.1 (geometry)",
+        "subject": "math"
+      },
+      {
+        "date": "20:55:13 8/7/2026",
+        "amount": -100,
+        "reason": "Quay Vòng Quay May Mắn"
+      },
+      {
+        "date": "20:53:02 8/7/2026",
+        "amount": 96,
+        "reason": "test",
+        "subject": "other"
+      },
+      {
+        "date": "2026-07-08T13:49:43.529Z",
+        "amount": 4,
+        "reason": "Kiểm tra Toán Lvl.1 (algebra)",
+        "subject": "math"
+      }
+    ],
+    "inventory": [],
+    "learningStats": [
+      {
+        "date": "2026-07-09T15:37:07.545Z",
+        "subject": "math",
+        "category": "algebra",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 21,
+        "points": 15,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-09T07:42:22.867Z",
+        "subject": "math",
+        "category": "probability",
+        "correct": 2,
+        "incorrect": 8,
+        "timeSpentSec": 2,
+        "points": 4,
+        "wrongDetails": [
+          {
+            "q": "Trong hộp có 1 quả bóng đỏ và 4 quả bóng đen. Lấy ngẫu nhiên 1 quả bóng. Khả năng lấy được quả bóng đỏ là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 3,
+            "correctAns": 1
+          },
+          {
+            "q": "Trong hộp có 4 cái kẹo đỏ và 1 cái kẹo vàng. Lấy ngẫu nhiên 1 cái kẹo. Khả năng lấy được cái kẹo đỏ là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 3,
+            "correctAns": 1
+          },
+          {
+            "q": "Trong hộp có 3 quả bóng đỏ và 2 quả bóng đen. Lấy ngẫu nhiên 1 quả bóng. Khả năng lấy được quả bóng đỏ là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 3,
+            "correctAns": 1
+          },
+          {
+            "q": "Trong hộp có 1 cái kẹo xanh và 4 cái kẹo vàng. Lấy ngẫu nhiên 1 cái kẹo. Khả năng lấy được cái kẹo xanh là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 5,
+            "correctAns": 1
+          },
+          {
+            "q": "Trong hộp có 4 cái kẹo xanh và 1 cái kẹo vàng. Lấy ngẫu nhiên 1 cái kẹo. Khả năng lấy được cái kẹo xanh là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 2,
+            "correctAns": 1
+          },
+          {
+            "q": "Trong hộp có 0 cái kẹo xanh và 5 cái kẹo vàng. Lấy ngẫu nhiên 1 cái kẹo. Khả năng lấy được cái kẹo xanh là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 1,
+            "correctAns": 0
+          },
+          {
+            "q": "Trong hộp có 3 chiếc bút xanh và 2 chiếc bút đen. Lấy ngẫu nhiên 1 chiếc bút. Khả năng lấy được chiếc bút xanh là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 2,
+            "correctAns": 1
+          },
+          {
+            "q": "Trong hộp có 2 viên bi đỏ và 3 viên bi vàng. Lấy ngẫu nhiên 1 viên bi. Khả năng lấy được viên bi đỏ là? (0: Không thể, 1: Có thể, 2: Chắc chắn)",
+            "userAns": 2,
+            "correctAns": 1
+          }
+        ]
+      },
+      {
+        "date": "2026-07-09T07:42:09.898Z",
+        "subject": "math",
+        "category": "logic",
+        "correct": 5,
+        "incorrect": 5,
+        "timeSpentSec": 35,
+        "points": 10,
+        "wrongDetails": [
+          {
+            "q": "Một chiếc đồng hồ quả lắc mất 4 giây để đánh 3 tiếng chuông. Hỏi nó sẽ mất bao nhiêu giây để đánh 7 tiếng chuông?",
+            "userAns": 14,
+            "correctAns": 12
+          },
+          {
+            "q": "Mai có 42000đ. Mai mua 3 quyển vở (mỗi quyển 6000đ) và 2 cây bút (mỗi cây 4000đ). Số tiền còn lại Mai chia đều vào 2 con heo đất. Hỏi mỗi con heo đất có bao nhiêu tiền?",
+            "userAns": 8002,
+            "correctAns": 8000
+          },
+          {
+            "q": "Hiện nay anh 13 tuổi, em 5 tuổi. Hỏi 4 năm nữa anh hơn em bao nhiêu tuổi?",
+            "userAns": 12,
+            "correctAns": 8
+          },
+          {
+            "q": "Trong sân có 5 chiếc xe gồm xe đạp (2 bánh) và xe ba bánh. Tổng cộng đếm được 12 bánh xe. Hỏi có bao nhiêu chiếc xe ba bánh?",
+            "userAns": 3,
+            "correctAns": 2
+          },
+          {
+            "q": "Lan có 48 quyển truyện. Số truyện của Lan gấp 4 lần số truyện của Mai. Hỏi cả hai bạn có tất cả bao nhiêu quyển truyện?",
+            "userAns": 62,
+            "correctAns": 60
+          }
+        ]
+      },
+      {
+        "date": "2026-07-09T07:38:15.322Z",
+        "subject": "reading",
+        "category": "grammar",
+        "timeSpentSec": 40,
+        "points": 5,
+        "wrongDetails": [
+          {
+            "q": "Từ nào thích hợp để điền vào chỗ trống: 'Đôi mắt bé tròn như...'",
+            "userAns": "khúc nhạc vui",
+            "correctAns": "hạt nhãn"
+          },
+          {
+            "q": "Cần điền dấu phẩy vào đâu trong câu: 'Sáng nay em đi học đi chơi'?",
+            "userAns": "Sáng, nay em đi học, đi chơi",
+            "correctAns": "Sáng nay, em đi học, đi chơi"
+          },
+          {
+            "q": "Câu nào dưới đây thuộc mẫu câu 'Ai là gì?'?",
+            "userAns": "Cô giáo em rất hiền.",
+            "correctAns": "Bố em là bác sĩ."
+          },
+          {
+            "q": "Câu nào dưới đây là CÂU CẢM?",
+            "userAns": "Mẹ em đang nấu cơm.",
+            "correctAns": "Ôi, bông hoa này đẹp quá!"
+          },
+          {
+            "q": "Từ nào TRÁI NGHĨA với từ 'hòa bình'?",
+            "userAns": "yên tĩnh",
+            "correctAns": "chiến tranh"
+          }
+        ],
+        "correct": 5,
+        "incorrect": 5
+      },
+      {
+        "date": "2026-07-09T07:34:07.329Z",
+        "subject": "math",
+        "category": "algebra",
+        "correct": 3,
+        "incorrect": 7,
+        "timeSpentSec": 3,
+        "points": 3,
+        "wrongDetails": [
+          {
+            "q": "Tìm X: X + 207 = 689",
+            "userAns": 481,
+            "correctAns": 482
+          },
+          {
+            "q": "Tìm X: X + 459 = 844",
+            "userAns": 384,
+            "correctAns": 385
+          },
+          {
+            "q": "Tìm X: X + 396 = 535",
+            "userAns": 141,
+            "correctAns": 139
+          },
+          {
+            "q": "73 - 1 = ?",
+            "userAns": 68,
+            "correctAns": 72
+          },
+          {
+            "q": "959 + 166 = ?",
+            "userAns": 1122,
+            "correctAns": 1125
+          },
+          {
+            "q": "4 x 45 = ?",
+            "userAns": 182,
+            "correctAns": 180
+          },
+          {
+            "q": "6 x 22 = ?",
+            "userAns": 136,
+            "correctAns": 132
+          }
+        ]
+      },
+      {
+        "date": "2026-07-09T07:30:14.926Z",
+        "subject": "math",
+        "category": "algebra",
+        "correct": 2,
+        "incorrect": 8,
+        "timeSpentSec": 4,
+        "points": 2,
+        "wrongDetails": [
+          {
+            "q": "1968 + 3386 = ?",
+            "userAns": 5355,
+            "correctAns": 5354
+          },
+          {
+            "q": "4406 - 1737 = ?",
+            "userAns": 2670,
+            "correctAns": 2669
+          },
+          {
+            "q": "6 x 51 = ?",
+            "userAns": 305,
+            "correctAns": 306
+          },
+          {
+            "q": "3397 - 3176 = ?",
+            "userAns": 223,
+            "correctAns": 221
+          },
+          {
+            "q": "1799 + 184 = ?",
+            "userAns": 1979,
+            "correctAns": 1983
+          },
+          {
+            "q": "4 x 30 = ?",
+            "userAns": 121,
+            "correctAns": 120
+          },
+          {
+            "q": "Tìm X: X - 2004 = 561",
+            "userAns": 2560,
+            "correctAns": 2565
+          },
+          {
+            "q": "3358 - 316 = ?",
+            "userAns": 3037,
+            "correctAns": 3042
+          }
+        ]
+      },
+      {
+        "date": "2026-07-09T03:20:11.787Z",
+        "subject": "math",
+        "category": "geometry",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 81,
+        "points": 12,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T16:15:22.904Z",
+        "subject": "reading",
+        "category": "grammar",
+        "timeSpentSec": 120,
+        "points": 4,
+        "wrongDetails": [],
+        "correct": 4,
+        "incorrect": 5
+      },
+      {
+        "date": "2026-07-08T16:13:04.768Z",
+        "subject": "reading",
+        "category": "grammar",
+        "timeSpentSec": 120,
+        "points": 12,
+        "wrongDetails": [],
+        "correct": 6,
+        "incorrect": 2
+      },
+      {
+        "date": "2026-07-08T16:09:56.103Z",
+        "subject": "reading",
+        "category": "reading",
+        "timeSpentSec": 6,
+        "points": 8,
+        "wrongDetails": [],
+        "wpm": 139,
+        "accuracy": 68,
+        "fluency": 100
+      },
+      {
+        "date": "2026-07-08T16:09:16.691Z",
+        "subject": "reading",
+        "category": "reading",
+        "timeSpentSec": 10,
+        "points": 9,
+        "wrongDetails": [],
+        "wpm": 130,
+        "accuracy": 90,
+        "fluency": 100
+      },
+      {
+        "date": "2026-07-08T15:58:47.987Z",
+        "subject": "math",
+        "category": "all",
+        "correct": 5,
+        "incorrect": 1,
+        "timeSpentSec": 140,
+        "points": 5
+      },
+      {
+        "date": "2026-07-08T15:52:14.731Z",
+        "subject": "math",
+        "category": "algebra",
+        "correct": 8,
+        "incorrect": 1,
+        "timeSpentSec": 120,
+        "points": 8
+      },
+      {
+        "date": "2026-07-08T15:49:54.978Z",
+        "subject": "math",
+        "category": "all",
+        "correct": 3,
+        "incorrect": 0,
+        "timeSpentSec": 140,
+        "points": 3
+      },
+      {
+        "date": "2026-07-08T15:47:01.803Z",
+        "subject": "math",
+        "category": "algebra",
+        "correct": 4,
+        "incorrect": 6,
+        "timeSpentSec": 93,
+        "points": 4,
+        "wrongDetails": [
+          {
+            "q": "368 : 8 = ?",
+            "userAns": 47,
+            "correctAns": 46
+          },
+          {
+            "q": "1328 - 825 = ?",
+            "userAns": 506,
+            "correctAns": 503
+          },
+          {
+            "q": "126 : 9 = ?",
+            "userAns": 10,
+            "correctAns": 14
+          },
+          {
+            "q": "Tìm X: X - 2020 = 2014",
+            "userAns": 4033,
+            "correctAns": 4034
+          },
+          {
+            "q": "Tìm X: X + 2053 = 4067",
+            "userAns": 2018,
+            "correctAns": 2014
+          },
+          {
+            "q": "Tìm X: X + 2089 = 3332",
+            "userAns": 1242,
+            "correctAns": 1243
+          }
+        ]
+      },
+      {
+        "date": "2026-07-08T15:32:50.281Z",
+        "subject": "math",
+        "category": "all",
+        "correct": 8,
+        "incorrect": 2,
+        "timeSpentSec": 130,
+        "points": 8,
+        "wrongDetails": [
+          {
+            "q": "Có 48 bạn xếp thành 3 hàng không đều nhau. Chuyển 1/3 số bạn ở hàng Một sang hàng Hai, rồi lại chuyển 4 bạn từ hàng Hai sang hàng Ba, lúc này số bạn ở mỗi hàng đều bằng nhau. Hỏi lúc đầu hàng Một có bao nhiêu bạn?",
+            "userAns": 22,
+            "correctAns": 24
+          },
+          {
+            "q": "Minh đọc cuốn sách 84 trang trong 4 ngày. Ngày đầu đọc 12 trang. Ngày hai đọc nhiều hơn ngày đầu 6 trang. Ngày ba đọc gấp 2 lần ngày đầu. Hỏi ngày thứ tư Minh cần đọc bao nhiêu trang để xong cuốn sách?",
+            "userAns": 27,
+            "correctAns": 30
+          }
+        ]
+      },
+      {
+        "date": "2026-07-08T15:29:13.277Z",
+        "subject": "math",
+        "category": "probability",
+        "correct": 3,
+        "incorrect": 2,
+        "timeSpentSec": 160,
+        "points": 6
+      },
+      {
+        "date": "2026-07-08T15:26:01.228Z",
+        "subject": "math",
+        "category": "geometry",
+        "correct": 5,
+        "incorrect": 0,
+        "timeSpentSec": 160,
+        "points": 3
+      },
+      {
+        "date": "2026-07-08T15:22:05.418Z",
+        "subject": "math",
+        "category": "geometry",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 108,
+        "points": 7,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T15:19:44.593Z",
+        "subject": "math",
+        "category": "logic",
+        "correct": 2,
+        "incorrect": 1,
+        "timeSpentSec": 160,
+        "points": 4
+      },
+      {
+        "date": "2026-07-08T14:11:25.101Z",
+        "subject": "math",
+        "category": "geometry",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 82,
+        "points": 12,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T14:00:43.303Z",
+        "subject": "math",
+        "category": "geometry",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 92,
+        "points": 12,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T13:49:43.529Z",
+        "subject": "math",
+        "category": "algebra",
+        "correct": 4,
+        "incorrect": 6,
+        "timeSpentSec": 2,
+        "points": 4,
+        "wrongDetails": [
+          {
+            "q": "Tìm X: X + 21 = 64",
+            "userAns": 42,
+            "correctAns": 43
+          },
+          {
+            "q": "12 : 6 = ?",
+            "userAns": 1,
+            "correctAns": 2
+          },
+          {
+            "q": "4 x 5 = ?",
+            "userAns": 24,
+            "correctAns": 20
+          },
+          {
+            "q": "46 + 98 = ?",
+            "userAns": 143,
+            "correctAns": 144
+          },
+          {
+            "q": "8 : 4 = ?",
+            "userAns": 0,
+            "correctAns": 2
+          },
+          {
+            "q": "2 x 2 = ?",
+            "userAns": 3,
+            "correctAns": 4
+          }
+        ]
+      }
+    ],
+    "mathLevel": 2
+  },
+  "vuanhthu": {
+    "points": 84,
+    "pointsHistory": [
+      {
+        "date": "2026-07-09T15:07:19.292Z",
+        "amount": 10,
+        "reason": "Môn Tiếng Việt (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-09T15:06:29.208Z",
+        "amount": 10,
+        "reason": "Môn Tiếng Việt (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-09T15:06:01.825Z",
+        "amount": 5,
+        "reason": "Môn Tiếng Việt (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-09T15:05:29.387Z",
+        "amount": 2,
+        "reason": "Môn Tiếng Việt (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-09T14:58:30.722Z",
+        "amount": 9,
+        "reason": "Kiểm tra Toán (visual_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T14:56:55.323Z",
+        "amount": 6,
+        "reason": "Kiểm tra Toán (visual_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T14:50:59.135Z",
+        "amount": 16,
+        "reason": "Kiểm tra Toán (visual_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T14:49:50.860Z",
+        "amount": 3,
+        "reason": "Kiểm tra Toán (basic_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-09T07:36:01.713Z",
+        "amount": 6,
+        "reason": "Kiểm tra Toán Lvl.9 (basic_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T16:12:27.275Z",
+        "amount": 15,
+        "reason": "Kiểm tra Toán Lvl.8 (basic_math)",
+        "subject": "math"
+      },
+      {
+        "date": "23:06:11 8/7/2026",
+        "amount": -200,
+        "reason": "Quay Vòng Quay May Mắn"
+      },
+      {
+        "date": "2026-07-08T16:06:03.091Z",
+        "amount": 3,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:05:54.540Z",
+        "amount": 9,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:05:44.040Z",
+        "amount": 3,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:05:35.528Z",
+        "amount": 9,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:05:27.517Z",
+        "amount": 9,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:05:20.064Z",
+        "amount": 9,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:05:00.045Z",
+        "amount": 10,
+        "reason": "Kiểm tra Toán Lvl.7 (visual_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T16:03:24.427Z",
+        "amount": 15,
+        "reason": "Kiểm tra Toán Lvl.6 (basic_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T16:01:53.045Z",
+        "amount": 10,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_words)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:01:37.498Z",
+        "amount": 10,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_words)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:01:24.020Z",
+        "amount": 3,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:01:14.383Z",
+        "amount": 9,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:01:04.401Z",
+        "amount": 3,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:00:55.311Z",
+        "amount": 2,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:00:41.548Z",
+        "amount": 2,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:00:32.254Z",
+        "amount": 3,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T16:00:11.840Z",
+        "amount": 3,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T15:59:44.465Z",
+        "amount": 5,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_words)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T15:59:18.523Z",
+        "amount": 3,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_words)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T15:59:07.108Z",
+        "amount": 9,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_letters)",
+        "subject": "reading"
+      },
+      {
+        "date": "2026-07-08T15:54:50.609Z",
+        "amount": 10,
+        "reason": "Kiểm tra Toán Lvl.5 (visual_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:37:55.389Z",
+        "amount": 12,
+        "reason": "Kiểm tra Toán Lvl.4 (visual_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:35:43.856Z",
+        "amount": 18,
+        "reason": "Kiểm tra Toán Lvl.3 (visual_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T15:16:26.489Z",
+        "amount": 12,
+        "reason": "Kiểm tra Toán Lvl.2 (basic_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T14:13:16.689Z",
+        "amount": 11,
+        "reason": "Kiểm tra Toán Lvl.1 (basic_math)",
+        "subject": "math"
+      },
+      {
+        "date": "2026-07-08T14:04:48.642Z",
+        "amount": 10,
+        "reason": "Môn Tiếng Việt Lvl.1 (prep_words)",
+        "subject": "reading"
+      },
+      {
+        "date": "20:57:57 8/7/2026",
+        "amount": -100,
+        "reason": "Quay Vòng Quay May Mắn"
+      },
+      {
+        "date": "20:57:05 8/7/2026",
+        "amount": 100,
+        "reason": "1",
+        "subject": "other"
+      },
+      {
+        "date": "20:55:38 8/7/2026",
+        "amount": -100,
+        "reason": "Quay Vòng Quay May Mắn"
+      },
+      {
+        "date": "20:53:13 8/7/2026",
+        "amount": 100,
+        "reason": "test",
+        "subject": "other"
+      }
+    ],
+    "inventory": [
+      {
+        "name": "30 phút xem TV 📺",
+        "count": 1
+      }
+    ],
+    "learningStats": [
+      {
+        "date": "2026-07-09T15:07:19.292Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 17,
+        "points": 10,
+        "wrongDetails": [],
+        "wpm": 0,
+        "accuracy": 100,
+        "fluency": 0
+      },
+      {
+        "date": "2026-07-09T15:06:49.037Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 12,
+        "points": 0,
+        "wrongDetails": [],
+        "wpm": 0,
+        "accuracy": 30,
+        "fluency": 0
+      },
+      {
+        "date": "2026-07-09T15:06:29.207Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 16,
+        "points": 10,
+        "wrongDetails": [],
+        "wpm": 0,
+        "accuracy": 90,
+        "fluency": 0
+      },
+      {
+        "date": "2026-07-09T15:06:01.825Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 10,
+        "points": 5,
+        "wrongDetails": [],
+        "wpm": 0,
+        "accuracy": 80,
+        "fluency": 0
+      },
+      {
+        "date": "2026-07-09T15:05:44.042Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 5,
+        "points": 0,
+        "wrongDetails": [],
+        "wpm": 0,
+        "accuracy": 0,
+        "fluency": 0
+      },
+      {
+        "date": "2026-07-09T15:05:29.387Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 9,
+        "points": 2,
+        "wrongDetails": [],
+        "wpm": 0,
+        "accuracy": 50,
+        "fluency": 0
+      },
+      {
+        "date": "2026-07-09T15:02:54.315Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 11,
+        "points": 0,
+        "wrongDetails": [],
+        "wpm": 0,
+        "accuracy": 0,
+        "fluency": 0
+      },
+      {
+        "date": "2026-07-09T14:58:30.722Z",
+        "subject": "math",
+        "category": "visual_math",
+        "correct": 9,
+        "incorrect": 0,
+        "timeSpentSec": 50,
+        "points": 9,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-09T14:56:55.322Z",
+        "subject": "math",
+        "category": "visual_math",
+        "correct": 6,
+        "incorrect": 2,
+        "timeSpentSec": 50,
+        "points": 6,
+        "wrongDetails": [
+          {
+            "q": "🍎🍎🍎🍎 + 🍎🍎🍎🍎 = ?",
+            "userAns": 9,
+            "correctAns": 8
+          },
+          {
+            "q": "🍎🍎🍎 + 🍎🍎🍎🍎 = ?",
+            "userAns": 8,
+            "correctAns": 7
+          }
+        ]
+      },
+      {
+        "date": "2026-07-09T14:50:59.134Z",
+        "subject": "math",
+        "category": "visual_math",
+        "correct": 8,
+        "incorrect": 0,
+        "timeSpentSec": 55,
+        "points": 16
+      },
+      {
+        "date": "2026-07-09T14:49:50.860Z",
+        "subject": "math",
+        "category": "basic_math",
+        "correct": 3,
+        "incorrect": 0,
+        "timeSpentSec": 50,
+        "points": 3
+      },
+      {
+        "date": "2026-07-09T07:36:01.713Z",
+        "subject": "math",
+        "category": "basic_math",
+        "correct": 6,
+        "incorrect": 4,
+        "timeSpentSec": 95,
+        "points": 6,
+        "wrongDetails": [
+          {
+            "q": "6 + 6 = ?",
+            "userAns": 14,
+            "correctAns": 12
+          },
+          {
+            "q": "16 - 10 = ?",
+            "userAns": 7,
+            "correctAns": 6
+          },
+          {
+            "q": "6 + 5 = ?",
+            "userAns": 10,
+            "correctAns": 11
+          },
+          {
+            "q": "18 - 9 = ?",
+            "userAns": 11,
+            "correctAns": 9
+          }
+        ]
+      },
+      {
+        "date": "2026-07-08T16:12:27.275Z",
+        "subject": "math",
+        "category": "basic_math",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 112,
+        "points": 15,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T16:06:03.091Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 4,
+        "points": 3,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 0,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:05:54.540Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 4,
+        "points": 9,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 95,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:05:44.040Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 4,
+        "points": 3,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 0,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:05:35.527Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 3,
+        "points": 9,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 95,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:05:27.517Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 3,
+        "points": 9,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 95,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:05:20.064Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 0,
+        "points": 9,
+        "wrongDetails": [],
+        "wpm": 40,
+        "accuracy": 85,
+        "fluency": 94
+      },
+      {
+        "date": "2026-07-08T16:05:00.045Z",
+        "subject": "math",
+        "category": "visual_math",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 68,
+        "points": 10,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T16:03:24.427Z",
+        "subject": "math",
+        "category": "basic_math",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 84,
+        "points": 15,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T16:01:53.045Z",
+        "subject": "reading",
+        "category": "prep_words",
+        "timeSpentSec": 3,
+        "points": 10,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 100,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:01:37.498Z",
+        "subject": "reading",
+        "category": "prep_words",
+        "timeSpentSec": 3,
+        "points": 10,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 100,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:01:24.020Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 4,
+        "points": 3,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 0,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:01:14.383Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 4,
+        "points": 9,
+        "wrongDetails": [],
+        "wpm": 40,
+        "accuracy": 85,
+        "fluency": 94
+      },
+      {
+        "date": "2026-07-08T16:01:04.401Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 3,
+        "points": 3,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 0,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T16:00:55.311Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 6,
+        "points": 2,
+        "wrongDetails": [],
+        "wpm": 10,
+        "accuracy": 0,
+        "fluency": 70
+      },
+      {
+        "date": "2026-07-08T16:00:41.548Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 2,
+        "points": 2,
+        "wrongDetails": [],
+        "wpm": 10,
+        "accuracy": 0,
+        "fluency": 70
+      },
+      {
+        "date": "2026-07-08T16:00:32.254Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 7,
+        "points": 3,
+        "wrongDetails": [],
+        "wpm": 26,
+        "accuracy": 0,
+        "fluency": 94
+      },
+      {
+        "date": "2026-07-08T16:00:11.840Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 4,
+        "points": 3,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 0,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T15:59:44.465Z",
+        "subject": "reading",
+        "category": "prep_words",
+        "timeSpentSec": 2,
+        "points": 5,
+        "wrongDetails": [],
+        "wpm": 10,
+        "accuracy": 40,
+        "fluency": 70
+      },
+      {
+        "date": "2026-07-08T15:59:18.523Z",
+        "subject": "reading",
+        "category": "prep_words",
+        "timeSpentSec": 2,
+        "points": 3,
+        "wrongDetails": [],
+        "wpm": 30,
+        "accuracy": 0,
+        "fluency": 100
+      },
+      {
+        "date": "2026-07-08T15:59:07.108Z",
+        "subject": "reading",
+        "category": "prep_letters",
+        "timeSpentSec": 4,
+        "points": 9,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 95,
+        "fluency": 85
+      },
+      {
+        "date": "2026-07-08T15:54:50.609Z",
+        "subject": "math",
+        "category": "visual_math",
+        "correct": 9,
+        "incorrect": 1,
+        "timeSpentSec": 75,
+        "points": 10,
+        "wrongDetails": [
+          {
+            "q": "🍎🍎 + 🍎🍎🍎🍎🍎 = ?",
+            "userAns": 8,
+            "correctAns": 7
+          }
+        ]
+      },
+      {
+        "date": "2026-07-08T15:37:55.389Z",
+        "subject": "math",
+        "category": "visual_math",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 103,
+        "points": 12,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T15:35:43.856Z",
+        "subject": "math",
+        "category": "visual_math",
+        "correct": 9,
+        "incorrect": 1,
+        "timeSpentSec": 133,
+        "points": 18,
+        "wrongDetails": [
+          {
+            "q": "🍎🍎 + 🍎🍎🍎 = ?",
+            "userAns": 7,
+            "correctAns": 5
+          }
+        ]
+      },
+      {
+        "date": "2026-07-08T15:16:26.488Z",
+        "subject": "math",
+        "category": "basic_math",
+        "correct": 10,
+        "incorrect": 0,
+        "timeSpentSec": 76,
+        "points": 12,
+        "wrongDetails": []
+      },
+      {
+        "date": "2026-07-08T14:13:16.689Z",
+        "subject": "math",
+        "category": "basic_math",
+        "correct": 9,
+        "incorrect": 1,
+        "timeSpentSec": 85,
+        "points": 11,
+        "wrongDetails": [
+          {
+            "q": "11 - 3 = ?",
+            "userAns": 9,
+            "correctAns": 8
+          }
+        ]
+      },
+      {
+        "date": "2026-07-08T14:04:48.642Z",
+        "subject": "reading",
+        "category": "prep_words",
+        "timeSpentSec": 5,
+        "points": 10,
+        "wrongDetails": [],
+        "wpm": 20,
+        "accuracy": 100,
+        "fluency": 85
+      }
+    ],
+    "mathLevel": 10
+  }
+}
