@@ -23,7 +23,7 @@ export default function StudentDashboard() {
   }, [pointKey, historyKey]);
 
   return (
-    <div className="card" style={{ maxWidth: '500px', width: '100%' }}>
+    <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0 }}>Chào mừng bé {displayName}! 🌟</h2>
         <button onClick={() => navigate('/')} style={{ padding: '5px 10px', backgroundColor: '#ccc', color: '#333' }}>Thoát</button>

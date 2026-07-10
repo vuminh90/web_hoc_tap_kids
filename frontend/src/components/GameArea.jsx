@@ -702,7 +702,7 @@ export default function GameArea() {
   if (screen === 'hub') {
     const categories = isGrade3 ? GRADE3_CATEGORIES : PREP_CATEGORIES;
     return (
-      <div className="card" style={{ maxWidth: '600px', width: '100%' }}>
+      <div className="card">
         <h2>Góc Học Toán Học 🧮</h2>
         <h4 style={{ color: '#666', marginBottom: '20px' }}>
         </h4>
@@ -744,7 +744,7 @@ export default function GameArea() {
 
   if (screen === 'result') {
     return (
-      <div className="card" style={{ maxWidth: '600px', width: '100%' }}>
+      <div className="card">
         <h2 style={{ color: '#E65100', textAlign: 'center' }}>Kết quả Bài kiểm tra</h2>
         <div style={{ background: '#E8F5E9', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px' }}>
           <h3>Đạt: {stats.correct}/10 điểm</h3>
@@ -777,7 +777,7 @@ export default function GameArea() {
   const timerColor = timeLeft > maxTime * 0.5 ? '#4CAF50' : (timeLeft > maxTime * 0.2 ? '#FF9800' : '#FF5252');
 
   return (
-    <div className="card" style={{ maxWidth: '500px', width: '100%' }}>
+    <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ color: '#E65100', margin: 0 }}>Câu {questionIndex + 1}/10</h2>
         <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: timerColor, padding: '5px 15px', border: `2px solid ${timerColor}`, borderRadius: '20px' }}>

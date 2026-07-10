@@ -524,7 +524,7 @@ export default function ReadingTest() {
   if (screen === 'hub') {
     const categories = isGrade3 ? GRADE3_VIETNAMESE : PREP_VIETNAMESE;
     return (
-      <div className="card" style={{ maxWidth: '600px', width: '100%' }}>
+      <div className="card">
         <h2>Góc Tiếng Việt 📖</h2>
         <h4 style={{ color: '#666', marginBottom: '20px' }}>
         </h4>
@@ -566,7 +566,7 @@ export default function ReadingTest() {
   if (screen === 'grammar') {
     const timerColor = timeLeft > maxTime * 0.5 ? '#4CAF50' : (timeLeft > maxTime * 0.2 ? '#FF9800' : '#FF5252');
     return (
-      <div className="card" style={{ maxWidth: '500px', width: '100%' }}>
+      <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ color: '#2E7D32', margin: 0 }}>Câu {grammarIndex + 1}/10</h2>
           <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: timerColor, padding: '5px 15px', border: `2px solid ${timerColor}`, borderRadius: '20px' }}>
@@ -589,7 +589,7 @@ export default function ReadingTest() {
 
   if (screen === 'writing') {
     return (
-      <div className="card" style={{ maxWidth: '600px', width: '100%' }}>
+      <div className="card">
         <h2 style={{ color: '#2E7D32' }}>Tập Làm Văn ✍️</h2>
         <div style={{ fontSize: '1.2rem', margin: '20px 0', padding: '15px', background: '#E3F2FD', borderRadius: '10px', fontStyle: 'italic', borderLeft: '4px solid #1976D2' }}>
           Đề bài: {writingTopic}
@@ -607,7 +607,7 @@ export default function ReadingTest() {
 
   if (screen === 'reading') {
     return (
-      <div className="card" style={{ maxWidth: '600px', width: '100%' }}>
+      <div className="card">
         <h2 style={{ color: '#2E7D32' }}>{category.includes('prep') ? 'Đọc chữ cái / Từ' : 'Luyện Đọc'} 🎙️</h2>
         <div style={{ padding: '30px', margin: '20px 0', background: '#f5f5f5', borderRadius: '10px', fontSize: category.includes('prep') ? '3rem' : '1.5rem', lineHeight: '1.6', fontWeight: category.includes('prep') ? 'bold' : 'normal' }}>
           {targetText}
@@ -645,7 +645,7 @@ export default function ReadingTest() {
 
   if (screen === 'result') {
     return (
-      <div className="card" style={{ maxWidth: '600px', width: '100%' }}>
+      <div className="card">
         <h2 style={{ color: '#E65100', textAlign: 'center' }}>Kết quả Bài kiểm tra</h2>
         <div style={{ background: '#E8F5E9', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px' }}>
           {category === 'grammar' && <h3>Đạt: {stats.correct}/10 điểm</h3>}

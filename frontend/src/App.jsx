@@ -22,7 +22,7 @@ function Login() {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
       <h1>🚀 Chào mừng đến Lớp Học Vui Nhộn!</h1>
       <p>Bé hãy chọn tài khoản của mình nhé:</p>
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '20px' }}>

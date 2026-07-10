@@ -110,7 +110,7 @@ export default function RewardShop() {
   };
 
   return (
-    <div className="card" style={{ maxWidth: '600px', width: '100%' }}>
+    <div className="card">
       <h2>🎁 Cửa Hàng May Mắn</h2>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>

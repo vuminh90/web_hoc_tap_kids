@@ -374,7 +374,7 @@ export default function AdminDashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="card" style={{ maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+      <div className="card" style={{ maxWidth: '500px', margin: '0 auto', textAlign: 'center' }}>
         <h2 style={{ color: '#1976D2' }}>Khu Vực Phụ Huynh 🔐</h2>
         <p>Vui lòng nhập mật khẩu để truy cập.</p>
         <input 
@@ -406,7 +406,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="card" style={{ maxWidth: '900px', width: '100%', textAlign: 'left' }}>
+    <div className="card" style={{ textAlign: 'left' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <h2 style={{ color: '#2196F3', margin: 0 }}>👨‍💻 Khu Vực Phụ Huynh</h2>
         <button onClick={() => { setIsAuthenticated(false); setPasswordInput(''); navigate('/'); }} style={{ padding: '8px 15px', backgroundColor: '#888', boxShadow: '0 4px 0 #555' }}>
