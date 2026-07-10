@@ -702,7 +702,7 @@ export default function GameArea() {
   if (screen === 'hub') {
     const categories = isGrade3 ? GRADE3_CATEGORIES : PREP_CATEGORIES;
     return (
-      <div className="card">
+      <div className="card" style={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <h2>Góc Học Toán Học 🧮</h2>
         <h4 style={{ color: '#666', marginBottom: '20px' }}>
         </h4>

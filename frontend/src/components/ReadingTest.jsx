@@ -19,8 +19,9 @@ const GRADE3_PASSAGES = [
   "Trường học của em rất đẹp. Sân trường có nhiều cây xanh toả bóng mát rượi."
 ];
 
-const PREP_LETTERS = ["a", "b", "c", "d", "e", "g", "h", "k", "l", "m"];
-const PREP_WORDS = ["bàn ghế", "bố mẹ", "con chó", "cây xanh", "quả cam"];
+const PREP_LETTERS = ["a", "b", "c", "d", "e", "g", "h", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "x", "y"];
+const PREP_SINGLE_WORDS = ["bàn", "ghế", "chó", "mèo", "cây", "lá", "hoa", "quả", "sách", "bút", "cá", "chim", "trời", "đất", "nước"];
+const PREP_COMPOUND_WORDS = ["bàn ghế", "bố mẹ", "con chó", "cây xanh", "quả cam", "quyển sách", "bút chì", "hoa hồng", "con mèo", "mặt trời", "trường học", "cô giáo"];
 
 export default function ReadingTest() {
   const navigate = useNavigate();
@@ -303,8 +304,19 @@ export default function ReadingTest() {
       return arr.join(" ");
     }
     if (catId === 'prep_words') {
+      let wordPool = level <= 2 ? PREP_SINGLE_WORDS : PREP_COMPOUND_WORDS;
+      let wordCount = 5;
+      
+      if (level === 2) wordCount = 10;
+      else if (level === 3) wordCount = 5;
+      else if (level === 4) wordCount = 10;
+      else if (level >= 5) wordCount = 15;
+
+      let availableWords = [...wordPool].sort(() => Math.random() - 0.5);
       let arr = [];
-      for(let i=0; i<10; i++) arr.push(PREP_WORDS[Math.floor(Math.random() * PREP_WORDS.length)]);
+      for(let i=0; i<wordCount; i++) {
+        arr.push(availableWords[i % availableWords.length]);
+      }
       return arr.join(" ");
     }
     return GRADE3_PASSAGES[Math.floor(Math.random() * GRADE3_PASSAGES.length)];
@@ -514,17 +526,32 @@ export default function ReadingTest() {
   };
 
   const finishReading = () => {
+    let newLevel = level;
+    let levelMessage = "";
+    if (scoreData.accuracy >= 90) {
+      newLevel += 1;
+      levelMessage = "Tuyệt vời! Bé đọc rất chuẩn, TĂNG CẤP ĐỘ KHÓ Tiếng Việt 🚀";
+    } else if (scoreData.accuracy <= 50 && level > 1) {
+      newLevel -= 1;
+      levelMessage = "Cấp độ đã được giảm xuống để bé đọc dễ hơn 🧸";
+    }
+
+    if (newLevel !== level) {
+      setLevel(newLevel);
+      localStorage.setItem(`vietLevel_${currentUser}`, newLevel.toString());
+    }
+
     saveResults(scoreData.points, scoreData.timeSpentSec, { 
       wpm: scoreData.wpm, 
       accuracy: scoreData.accuracy, 
       fluency: scoreData.fluency 
-    });
+    }, levelMessage);
   };
 
   if (screen === 'hub') {
     const categories = isGrade3 ? GRADE3_VIETNAMESE : PREP_VIETNAMESE;
     return (
-      <div className="card">
+      <div className="card" style={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <h2>Góc Tiếng Việt 📖</h2>
         <h4 style={{ color: '#666', marginBottom: '20px' }}>
         </h4>
