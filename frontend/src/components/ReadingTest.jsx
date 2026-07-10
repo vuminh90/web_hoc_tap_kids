@@ -52,6 +52,7 @@ export default function ReadingTest() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [maxTime, setMaxTime] = useState(0);
   const timerRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   // --- INTERVENTION ENGINE ---
   useEffect(() => {
@@ -108,15 +109,19 @@ export default function ReadingTest() {
 
   // --- COUNTDOWN EFFECT ---
   useEffect(() => {
-    if (screen === 'grammar' && timeLeft > 0) {
+    if ((screen === 'grammar' || (screen === 'reading' && isRecording)) && timeLeft > 0) {
       timerRef.current = setTimeout(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
       return () => clearTimeout(timerRef.current);
     } else if (screen === 'grammar' && timeLeft === 0) {
       finishGrammar(stats, wrongAnswers, true);
+    } else if (screen === 'reading' && isRecording && timeLeft === 0) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
     }
-  }, [timeLeft, screen]);
+  }, [timeLeft, screen, isRecording, stats, wrongAnswers]);
 
   // --- PROCEDURAL GRAMMAR GENERATOR ---
   const generateProceduralGrammar = (lvl) => {
@@ -394,6 +399,18 @@ export default function ReadingTest() {
       setTargetText(getReadingText(catId));
       setTranscript("");
       setScoreData(null);
+      let calculatedTime = 30;
+      if (catId === 'prep_words' || catId === 'prep_letters') {
+         if (level <= 1) calculatedTime = 20;
+         else if (level === 2) calculatedTime = 30;
+         else if (level === 3) calculatedTime = 30;
+         else if (level === 4) calculatedTime = 40;
+         else calculatedTime = 60;
+      } else {
+         calculatedTime = Math.max(30, 90 - (level * 10)); 
+      }
+      setMaxTime(calculatedTime);
+      setTimeLeft(calculatedTime);
     }
   };
 
@@ -465,8 +482,7 @@ export default function ReadingTest() {
 
   const toggleRecording = () => {
     if (isRecording) {
-      setIsRecording(false);
-      calculateScore(transcript);
+      if (recognitionRef.current) recognitionRef.current.stop();
     } else {
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         alert("Trình duyệt không hỗ trợ nhận diện giọng nói. Vui lòng dùng Chrome.");
@@ -474,6 +490,7 @@ export default function ReadingTest() {
       }
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
       recognition.lang = 'vi-VN';
       recognition.interimResults = true;
       recognition.continuous = true;
@@ -633,9 +650,17 @@ export default function ReadingTest() {
   }
 
   if (screen === 'reading') {
+    const timerColor = timeLeft > maxTime * 0.5 ? '#4CAF50' : (timeLeft > maxTime * 0.2 ? '#FF9800' : '#FF5252');
     return (
       <div className="card">
-        <h2 style={{ color: '#2E7D32' }}>{category.includes('prep') ? 'Đọc chữ cái / Từ' : 'Luyện Đọc'} 🎙️</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ color: '#2E7D32', margin: 0 }}>{category.includes('prep') ? 'Đọc chữ cái / Từ' : 'Luyện Đọc'} 🎙️</h2>
+          {isRecording && (
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: timerColor, padding: '5px 15px', border: `2px solid ${timerColor}`, borderRadius: '20px' }}>
+              ⏱ {timeLeft}s
+            </div>
+          )}
+        </div>
         <div style={{ padding: '30px', margin: '20px 0', background: '#f5f5f5', borderRadius: '10px', fontSize: category.includes('prep') ? '3rem' : '1.5rem', lineHeight: '1.6', fontWeight: category.includes('prep') ? 'bold' : 'normal' }}>
           {targetText}
         </div>
