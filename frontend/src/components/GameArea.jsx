@@ -1,19 +1,47 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { syncToServer } from '../sync';
+import { createAdvancedShapePuzzle, createShapePuzzle } from '../math/shapePuzzleGenerator';
 
 const GRADE3_CATEGORIES = [
   { id: 'algebra', name: 'Đại số (Cộng/Trừ, Nhân/Chia)', icon: '🔢' },
-  { id: 'geometry', name: 'Hình học (Chu vi, Diện tích)', icon: '📐' },
+  { id: 'geometry', name: 'Hình học: Đếm hình nâng cao', icon: '📐' },
   { id: 'probability', name: 'Xác suất & Thống kê', icon: '🎲' },
   { id: 'logic', name: 'Toán có lời văn (Logic)', icon: '🧠' },
   { id: 'all', name: 'Đề Tổng hợp', icon: '🏆' }
 ];
 
 const PREP_CATEGORIES = [
-  { id: 'basic_math', name: 'Phép tính (Cộng/Trừ)', icon: '➕' },
-  { id: 'visual_math', name: 'Toán Hình Ảnh (Đếm đồ vật)', icon: '🍎' }
+  { id: 'basic_math', name: 'Phép tính cộng, trừ trong phạm vi 100', icon: '➕' },
+  { id: 'visual_math', name: 'Hình học: Đếm số lượng hình', icon: '▢' }
 ];
+
+const PREP_DIFFICULTIES = [
+  { key: 'easy', name: 'Dễ', minLevel: 1, maxLevel: 2, pointBonus: 0, time: 120 },
+  { key: 'medium', name: 'Trung bình', minLevel: 3, maxLevel: 4, pointBonus: 2, time: 100 },
+  { key: 'hard', name: 'Khó', minLevel: 5, maxLevel: 6, pointBonus: 4, time: 85 },
+  { key: 'special', name: 'Đặc biệt', minLevel: 7, maxLevel: 8, pointBonus: 7, time: 70 }
+];
+
+const MAX_PREP_LEVEL = PREP_DIFFICULTIES[PREP_DIFFICULTIES.length - 1].maxLevel;
+const MIN_ANSWER_TIME_MS = 2000;
+const getPrepDifficulty = (lvl) => PREP_DIFFICULTIES.find(d => lvl >= d.minLevel && lvl <= d.maxLevel) || PREP_DIFFICULTIES[0];
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+const getQuizBasePoints = (correct) => {
+  if (correct <= 4) return 0;
+  if (correct <= 6) return 2;
+  if (correct === 7) return 5;
+  if (correct === 8) return 8;
+  if (correct === 9) return 10;
+  return 12;
+};
+
+const getFastAnswerMultiplier = (fastAnswers) => {
+  if (fastAnswers >= 6) return 0;
+  if (fastAnswers >= 3) return 0.5;
+  return 1;
+};
 
 export default function GameArea() {
   const navigate = useNavigate();
@@ -21,6 +49,13 @@ export default function GameArea() {
   const isGrade3 = currentUser === 'vuanhduc';
   
   const [level, setLevel] = useState(parseInt(localStorage.getItem(`mathLevel_${currentUser}`) || '1', 10));
+
+  useEffect(() => {
+    if (!isGrade3 && level > MAX_PREP_LEVEL) {
+      setLevel(MAX_PREP_LEVEL);
+      localStorage.setItem(`mathLevel_${currentUser}`, MAX_PREP_LEVEL.toString());
+    }
+  }, [currentUser, isGrade3, level]);
 
   const [screen, setScreen] = useState('hub'); 
   const [category, setCategory] = useState(null);
@@ -33,10 +68,30 @@ export default function GameArea() {
   
   const [stats, setStats] = useState({ correct: 0, incorrect: 0, startTime: null });
   const [wrongAnswers, setWrongAnswers] = useState([]);
+  const [canAnswer, setCanAnswer] = useState(false);
   
   const [timeLeft, setTimeLeft] = useState(0);
   const [maxTime, setMaxTime] = useState(0);
   const timerRef = useRef(null);
+  const answerDelayRef = useRef(null);
+  const questionStartedAtRef = useRef(null);
+  const fastAnswerCountRef = useRef(0);
+
+  const beginAnswerDelay = () => {
+    clearTimeout(answerDelayRef.current);
+    questionStartedAtRef.current = Date.now();
+    setCanAnswer(false);
+    answerDelayRef.current = setTimeout(() => setCanAnswer(true), MIN_ANSWER_TIME_MS);
+  };
+
+  const recordAnswerTiming = () => {
+    const elapsedMs = Date.now() - (questionStartedAtRef.current || Date.now());
+    const wasFast = elapsedMs < MIN_ANSWER_TIME_MS;
+    if (wasFast) {
+      fastAnswerCountRef.current += 1;
+    }
+    return wasFast;
+  };
 
   // --- INTERVENTION ENGINE ---
   useEffect(() => {
@@ -102,6 +157,8 @@ export default function GameArea() {
     }
   }, [timeLeft, screen]);
 
+  useEffect(() => () => clearTimeout(answerDelayRef.current), []);
+
   // --- PROCEDURAL GENERATORS (AI ENGINE) ---
   const generateAlgebra3 = (lvl) => {
     const type = Math.floor(Math.random() * 5); // Add Finding X
@@ -141,53 +198,15 @@ export default function GameArea() {
     }
   };
 
-  const generateGeometry3 = (lvl) => {
-    const isVisual = Math.random() > 0.5; // 50% chance for visual geometry
-
-    if (isVisual) {
-      const visualTypes = [
-        {
-          q: "Hình dưới đây có bao nhiêu hình tam giác?",
-          svg: `<svg viewBox="0 0 100 100" width="150" height="150"><polygon points="50,10 10,90 90,90" fill="none" stroke="#E65100" stroke-width="4"/><line x1="50" y1="10" x2="50" y2="90" stroke="#E65100" stroke-width="4"/></svg>`,
-          ans: 3
-        },
-        {
-          q: "Hình dưới đây có bao nhiêu hình tam giác?",
-          svg: `<svg viewBox="0 0 100 100" width="150" height="150"><rect x="10" y="10" width="80" height="80" fill="none" stroke="#2196F3" stroke-width="4"/><line x1="10" y1="10" x2="90" y2="90" stroke="#2196F3" stroke-width="4"/></svg>`,
-          ans: 2
-        },
-        {
-          q: "Hình dưới đây có bao nhiêu hình tam giác?",
-          svg: `<svg viewBox="0 0 100 100" width="150" height="150"><rect x="10" y="10" width="80" height="80" fill="none" stroke="#4CAF50" stroke-width="4"/><line x1="10" y1="10" x2="90" y2="90" stroke="#4CAF50" stroke-width="4"/><line x1="90" y1="10" x2="10" y2="90" stroke="#4CAF50" stroke-width="4"/></svg>`,
-          ans: 8
-        },
-        {
-          q: "Hình dưới đây có bao nhiêu hình chữ nhật?",
-          svg: `<svg viewBox="0 0 120 80" width="180" height="120"><rect x="10" y="10" width="90" height="60" fill="none" stroke="#9C27B0" stroke-width="4"/><line x1="40" y1="10" x2="40" y2="70" stroke="#9C27B0" stroke-width="4"/><line x1="70" y1="10" x2="70" y2="70" stroke="#9C27B0" stroke-width="4"/></svg>`,
-          ans: 6
-        }
-      ];
-      return visualTypes[Math.floor(Math.random() * visualTypes.length)];
-    }
-
-    const type = Math.floor(Math.random() * 3);
-    const maxSide = lvl === 1 ? 5 : (lvl === 2 ? 10 : 20);
-    
-    if (type === 0) { // Square
-      const a = Math.floor(Math.random() * maxSide) + 2;
-      const isArea = Math.random() > 0.5;
-      if (isArea) return { q: `Diện tích mảnh vườn hình vuông cạnh ${a}m là bao nhiêu m2?`, ans: a * a };
-      return { q: `Chu vi khung tranh hình vuông cạnh ${a}cm là bao nhiêu cm?`, ans: a * 4 };
-    } else if (type === 1) { // Rectangle
-      const a = Math.floor(Math.random() * maxSide) + 5;
-      const b = Math.floor(Math.random() * a) + 2;
-      const isArea = Math.random() > 0.5;
-      if (isArea) return { q: `Tính diện tích mặt bàn hình chữ nhật dài ${a}cm, rộng ${b}cm?`, ans: a * b };
-      return { q: `Tính chu vi sân trường hình chữ nhật dài ${a}m, rộng ${b}m?`, ans: (a + b) * 2 };
-    } else { // Reverse logic (Find side given perimeter)
-      const a = Math.floor(Math.random() * maxSide) + 2;
-      return { q: `Một khung tranh hình vuông có chu vi là ${a * 4}cm. Hỏi cạnh của nó dài bao nhiêu cm?`, ans: a };
-    }
+  const generateGeometry3 = (lvl, excludedKeys = usedQuestions) => {
+    const selected = createAdvancedShapePuzzle(lvl, Math.random, excludedKeys);
+    return {
+      q: selected.q,
+      svg: selected.svg,
+      ans: selected.ans,
+      skill: selected.skill,
+      key: selected.key
+    };
   };
 
   const generateProbability3 = (lvl) => {
@@ -502,37 +521,62 @@ export default function GameArea() {
   };
 
   const generatePrepMath = (lvl) => {
-    const isAdd = Math.random() > 0.5;
+    const difficulty = getPrepDifficulty(lvl);
+    const isAdd = Math.random() < (difficulty.key === 'easy' ? 0.65 : 0.52);
+    const maxTens = difficulty.key === 'easy' ? 3 : (difficulty.key === 'medium' ? 6 : 9);
+
     if (isAdd) {
-      const aTens = Math.random() > 0.5 ? 1 : 0;
-      const bTens = aTens === 1 ? 0 : (Math.random() > 0.5 ? 1 : 0);
-      const aUnits = Math.floor(Math.random() * 10);
-      const bUnits = Math.floor(Math.random() * (10 - aUnits));
+      const sumUnitsTarget = difficulty.key === 'easy' ? randInt(2, 8) : randInt(3, 9);
+      const aUnits = randInt(0, sumUnitsTarget);
+      const bUnits = sumUnitsTarget - aUnits;
+      const maxTensSum = difficulty.key === 'easy' ? 3 : (difficulty.key === 'medium' ? 7 : 9);
+      const aTens = randInt(difficulty.key === 'easy' ? 0 : 1, maxTens);
+      const bTens = randInt(0, Math.max(0, maxTensSum - aTens));
       const a = aTens * 10 + aUnits;
       const b = bTens * 10 + bUnits;
-      return { q: `${a} + ${b} = ?`, ans: a + b };
-    } else {
-      const aTens = Math.random() > 0.5 ? 1 : 0;
-      const bTens = aTens === 1 ? (Math.random() > 0.5 ? 1 : 0) : 0;
-      const aUnits = Math.floor(Math.random() * 10);
-      const bUnits = Math.floor(Math.random() * (aUnits + 1));
-      let a = aTens * 10 + aUnits;
-      let b = bTens * 10 + bUnits;
-      if (a === 0 && b === 0) { a = 1; b = 0; }
-      return { q: `${a} - ${b} = ?`, ans: a - b };
+      return {
+        q: `${a} + ${b} = ?`,
+        ans: a + b,
+        difficulty: difficulty.name,
+        skill: 'Cộng không nhớ trong phạm vi 100'
+      };
     }
+
+    const aTens = randInt(difficulty.key === 'easy' ? 0 : 1, maxTens);
+    const bTens = randInt(0, aTens);
+    const aUnits = randInt(difficulty.key === 'easy' ? 1 : 0, 9);
+    const bUnits = randInt(0, aUnits);
+    let a = aTens * 10 + aUnits;
+    let b = bTens * 10 + bUnits;
+
+    if (a === b) {
+      a = Math.min(99, a + 1);
+    }
+
+    return {
+      q: `${a} - ${b} = ?`,
+      ans: a - b,
+      difficulty: difficulty.name,
+      skill: 'Trừ không mượn trong phạm vi 100'
+    };
   };
 
-  const generatePrepVisual = (lvl) => {
-    const maxVal = lvl <= 2 ? 3 : 5;
-    const a = Math.floor(Math.random() * maxVal) + 1;
-    const b = Math.floor(Math.random() * maxVal) + 1;
-    const emojis = "🍎".repeat(a) + " + " + "🍎".repeat(b);
-    return { q: emojis + " = ?", ans: a + b };
+  const generatePrepVisual = (lvl, excludedKeys = usedQuestions) => {
+    const difficulty = getPrepDifficulty(lvl);
+    const selected = createShapePuzzle(lvl, Math.random, excludedKeys);
+
+    return {
+      q: selected.q,
+      svg: selected.svg,
+      ans: selected.ans,
+      difficulty: difficulty.name,
+      skill: selected.skill,
+      key: selected.key
+    };
   };
 
   // --- ANTI-REPETITION WRAPPER ---
-  const generateUniqueQuestion = (catId, currentLevel) => {
+  const generateUniqueQuestion = (catId, currentLevel, questionHistory = usedQuestions) => {
     let qObj;
     let attempts = 0;
     let foundUnique = false;
@@ -540,38 +584,54 @@ export default function GameArea() {
     while (!foundUnique && attempts < 20) {
       if (isGrade3) {
         if (catId === 'algebra') qObj = generateAlgebra3(currentLevel);
-        else if (catId === 'geometry') qObj = generateGeometry3(currentLevel);
+        else if (catId === 'geometry') qObj = generateGeometry3(currentLevel, questionHistory);
         else if (catId === 'probability') qObj = generateProbability3(currentLevel);
         else if (catId === 'logic') qObj = generateLogic3(currentLevel);
         else {
-          const funcs = [generateAlgebra3, generateGeometry3, generateLogic3];
+          const funcs = [generateAlgebra3, lvl => generateGeometry3(lvl, questionHistory), generateLogic3];
           qObj = funcs[Math.floor(Math.random() * funcs.length)](currentLevel);
         }
       } else {
         if (catId === 'basic_math') qObj = generatePrepMath(currentLevel);
-        else qObj = generatePrepVisual(currentLevel);
+        else qObj = generatePrepVisual(currentLevel, questionHistory);
       }
 
-      if (!usedQuestions.has(qObj.q)) {
+      const questionKey = qObj.key || `${qObj.q}|${qObj.svg || ''}`;
+      if (!questionHistory.has(questionKey)) {
         foundUnique = true;
-        const newUsed = new Set(usedQuestions);
-        newUsed.add(qObj.q);
+        const newUsed = new Set(questionHistory);
+        newUsed.add(questionKey);
         setUsedQuestions(newUsed);
       }
       attempts++;
     }
 
     let opts = [qObj.ans];
+    const isShapeQuestion = (!isGrade3 && catId === 'visual_math') || (isGrade3 && catId === 'geometry');
+    const optionSpread = !isGrade3 && isShapeQuestion ? 5 : 12;
+    const optionMin = isShapeQuestion ? 1 : 0;
+    const optionMax = !isGrade3 && isShapeQuestion
+      ? 6
+      : (!isGrade3 ? 100 : Math.max(100, qObj.ans + optionSpread));
+    const nearbyOptions = [];
+    for (let offset = -optionSpread; offset <= optionSpread; offset++) {
+      if (offset !== 0) nearbyOptions.push(qObj.ans + offset);
+    }
+    nearbyOptions.sort(() => Math.random() - 0.5);
+    nearbyOptions.forEach(fakeAns => {
+      if (opts.length < 4 && fakeAns >= optionMin && fakeAns <= optionMax && !opts.includes(fakeAns)) {
+        opts.push(fakeAns);
+      }
+    });
     while (opts.length < 4) {
-      let offset = Math.floor(Math.random() * 10) - 5;
-      if (offset === 0) offset = 1;
-      const fakeAns = qObj.ans + offset;
-      if (fakeAns >= 0 && !opts.includes(fakeAns)) opts.push(fakeAns);
+      const fakeAns = randInt(optionMin, optionMax);
+      if (!opts.includes(fakeAns)) opts.push(fakeAns);
     }
     opts.sort(() => Math.random() - 0.5);
     
     setQuestion(qObj);
     setOptions(opts);
+    beginAnswerDelay();
   };
 
   const startGame = (catId) => {
@@ -580,19 +640,25 @@ export default function GameArea() {
     setStats({ correct: 0, incorrect: 0, startTime: Date.now() });
     setWrongAnswers([]);
     setQuestionIndex(0);
-    setUsedQuestions(new Set()); // Reset anti-repetition for new game
+    fastAnswerCountRef.current = 0;
+    setCanAnswer(false);
+    const freshQuestionHistory = new Set();
+    setUsedQuestions(freshQuestionHistory); // Reset anti-repetition for new game
     
-    const baseTime = isGrade3 ? 120 : 90;
+    const prepDifficulty = getPrepDifficulty(level);
+    const baseTime = isGrade3 ? 120 : prepDifficulty.time;
     const timeDecay = isGrade3 ? 10 : 5;
-    let calculatedMaxTime = baseTime - ((level - 1) * timeDecay);
+    let calculatedMaxTime = isGrade3 ? baseTime - ((level - 1) * timeDecay) : baseTime;
     if (calculatedMaxTime < 30) calculatedMaxTime = 30; // Min time 30s
     setMaxTime(calculatedMaxTime);
     setTimeLeft(calculatedMaxTime);
 
-    generateUniqueQuestion(catId, level);
+    generateUniqueQuestion(catId, level, freshQuestionHistory);
   };
 
   const handleAnswer = (ans) => {
+    if (!canAnswer) return;
+    recordAnswerTiming();
     const isCorrect = ans === question.ans;
     let newStats = { ...stats };
     let newWrongs = [...wrongAnswers];
@@ -623,7 +689,11 @@ export default function GameArea() {
     if (interventions[category] === 'boosted') multiplier = 2;
 
     // Calculate base points
-    let earnedPoints = Math.round(finalStats.correct * multiplier);
+    const prepDifficulty = getPrepDifficulty(level);
+    const fastAnswers = fastAnswerCountRef.current;
+    const fastMultiplier = getFastAnswerMultiplier(fastAnswers);
+    const difficultyBonus = !isGrade3 && finalStats.correct >= 5 ? prepDifficulty.pointBonus : 0;
+    let earnedPoints = Math.round((getQuizBasePoints(finalStats.correct) + difficultyBonus) * multiplier);
     
     // Speed Bonus (Not affected by multiplier)
     let bonus = 0;
@@ -637,17 +707,38 @@ export default function GameArea() {
         bonusReason = "Thưởng Tốc Độ Nhanh (+2💎)";
       }
     }
-    earnedPoints += bonus;
+    if (!isGrade3 && finalStats.correct === 10) {
+      bonus += 3;
+      bonusReason = bonusReason ? `${bonusReason} + Hoàn hảo (+3💎)` : "Hoàn hảo (+3💎)";
+    }
+    earnedPoints = Math.round((earnedPoints + bonus) * fastMultiplier);
 
     // Level Adjustment
     let newLevel = level;
     let levelMessage = "";
-    if (finalStats.correct >= 8) {
-      newLevel += 1;
-      levelMessage = "Tuyệt vời! Bé đã được TĂNG CẤP ĐỘ KHÓ 🚀";
+    if (isGrade3) {
+      if (finalStats.correct >= 8) {
+        newLevel += 1;
+        levelMessage = "Tuyệt vời! Bé đã được TĂNG CẤP ĐỘ KHÓ 🚀";
+      } else if (finalStats.correct <= 4 && level > 1) {
+        newLevel -= 1;
+        levelMessage = "Cố lên! Cấp độ đã được giảm xuống để bé ôn tập lại 🧸";
+      }
+    } else if (finalStats.correct >= 9) {
+      newLevel = Math.min(level + 1, MAX_PREP_LEVEL);
+      levelMessage = newLevel > level
+        ? `Tuyệt vời! Bé lên cấp ${newLevel} (${getPrepDifficulty(newLevel).name}) 🚀`
+        : `Xuất sắc! Bé đã chinh phục cấp ${getPrepDifficulty(level).name} 🌟`;
+    } else if (finalStats.correct === 8) {
+      newLevel = Math.min(level + 1, MAX_PREP_LEVEL);
+      levelMessage = newLevel > level
+        ? `Rất tốt! Bé được lên cấp ${newLevel} (${getPrepDifficulty(newLevel).name})`
+        : "Rất tốt! Bé giữ vững cấp đặc biệt";
     } else if (finalStats.correct <= 4 && level > 1) {
-      newLevel -= 1;
-      levelMessage = "Cố lên! Cấp độ đã được giảm xuống để bé ôn tập lại 🧸";
+      newLevel = Math.max(level - 1, 1);
+      levelMessage = `Mình ôn lại nhẹ hơn ở cấp ${newLevel} (${getPrepDifficulty(newLevel).name}) nhé`;
+    } else {
+      levelMessage = `Bé giữ cấp ${level} (${prepDifficulty.name}) để luyện chắc hơn`;
     }
     
     if (newLevel !== level) {
@@ -666,6 +757,7 @@ export default function GameArea() {
       incorrect: finalStats.incorrect,
       timeSpentSec: timeSpentSec,
       points: earnedPoints,
+      fastAnswers: fastAnswers,
       wrongDetails: finalWrongs
     });
     if (learningHistory.length > 50) learningHistory.length = 50;
@@ -691,8 +783,13 @@ export default function GameArea() {
     if (isTimeout) interventionMsg += "⏰ Hết giờ. Bạn cần cố gắng làm bài nhanh hơn!\n";
     if (multiplier === 0.5) interventionMsg += "Phần thưởng môn này đã bị giảm 50% do làm quá nhiều!\n";
     if (multiplier === 2) interventionMsg += "Tuyệt vời! Bạn nhận được x2 Điểm Khuyến khích!\n";
+    if (fastAnswers >= 6) {
+      interventionMsg += `Bài làm có ${fastAnswers} câu trả lời dưới 2 giây nên chưa được cộng thưởng. Bé hãy đọc kỹ hơn nhé!\n`;
+    } else if (fastAnswers >= 3) {
+      interventionMsg += `Bài làm có ${fastAnswers} câu trả lời dưới 2 giây nên điểm thưởng giảm 50%.\n`;
+    }
 
-    setStats({ ...finalStats, earnedPoints, timeSpentSec, interventionMsg, bonusReason, levelMessage });
+    setStats({ ...finalStats, earnedPoints, timeSpentSec, interventionMsg, bonusReason, levelMessage, fastAnswers });
     setWrongAnswers(finalWrongs || []);
     syncToServer(currentUser);
     setScreen('result');
@@ -704,8 +801,6 @@ export default function GameArea() {
     return (
       <div className="card" style={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <h2>Góc Học Toán Học 🧮</h2>
-        <h4 style={{ color: '#666', marginBottom: '20px' }}>
-        </h4>
         <div className="grid-2-col">
           {categories.map(c => {
             const isLocked = interventions[c.id] === 'locked';
@@ -784,7 +879,7 @@ export default function GameArea() {
           ⏱ {timeLeft}s
         </div>
       </div>
-      
+
       <div style={{ fontSize: '1.5rem', margin: '30px 0', padding: '20px', background: '#FFF3E0', borderRadius: '10px', minHeight: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
         <div style={{ marginBottom: question?.svg ? '20px' : '0' }}>{question?.q}</div>
         {question?.svg && <div dangerouslySetInnerHTML={{ __html: question.svg }} />}
@@ -792,7 +887,7 @@ export default function GameArea() {
       
       <div className="grid-2-col">
         {options.map((opt, i) => (
-          <button key={i} onClick={() => handleAnswer(opt)} style={{ fontSize: '1.5rem', padding: '15px' }}>
+          <button key={i} onClick={() => handleAnswer(opt)} disabled={!canAnswer} style={{ fontSize: '1.5rem', padding: '15px', cursor: canAnswer ? 'pointer' : 'not-allowed', opacity: canAnswer ? 1 : 0.65 }}>
             {opt}
           </button>
         ))}

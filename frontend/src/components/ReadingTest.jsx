@@ -9,8 +9,8 @@ const GRADE3_VIETNAMESE = [
 ];
 
 const PREP_VIETNAMESE = [
-  { id: 'prep_letters', name: 'Đọc Bảng Chữ Cái', icon: '🅰️' },
-  { id: 'prep_words', name: 'Đọc Từ Ghép', icon: '🔤' }
+  { id: 'prep_passage', name: 'Đọc Đoạn Văn', icon: '📖' },
+  { id: 'prep_riddle', name: 'Đố Vui Hoa Quả & Con Vật', icon: '🧩' }
 ];
 
 const GRADE3_PASSAGES = [
@@ -19,9 +19,337 @@ const GRADE3_PASSAGES = [
   "Trường học của em rất đẹp. Sân trường có nhiều cây xanh toả bóng mát rượi."
 ];
 
-const PREP_LETTERS = ["a", "b", "c", "d", "e", "g", "h", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "x", "y"];
-const PREP_SINGLE_WORDS = ["bàn", "ghế", "chó", "mèo", "cây", "lá", "hoa", "quả", "sách", "bút", "cá", "chim", "trời", "đất", "nước"];
-const PREP_COMPOUND_WORDS = ["bàn ghế", "bố mẹ", "con chó", "cây xanh", "quả cam", "quyển sách", "bút chì", "hoa hồng", "con mèo", "mặt trời", "trường học", "cô giáo"];
+const PREP_READING_LEVELS = ['easy', 'medium', 'hard', 'special'];
+
+const normalizeWords = (text) =>
+  text
+    .replace(/[.,!?;:()"“”]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+
+const makePrepReadingLibrary = () => {
+  const easyOpeners = [
+    "Bé An đi học", "Bé Na đọc sách", "Nam tưới cây", "Lan vẽ hoa", "Minh rửa tay",
+    "Bé Mai ăn cơm", "Bố đưa bé đi", "Mẹ kể chuyện", "Cô giáo cười", "Bé Hà hát",
+    "Bé Bin xếp sách", "Bé Su lau bàn", "Bé Bông tô màu", "Bé Tôm đá bóng", "Bé Ken chào cô",
+    "Bé Miu ngồi học", "Bé Sóc nhặt lá", "Bé Gạo gấp áo", "Bé Mây ngắm hoa", "Bé Tin đọc bài"
+  ];
+  const easyClosers = [
+    "Bé đọc chậm và rất vui hôm nay.", "Cả nhà khen bé học thật ngoan hôm nay.", "Bạn nhỏ cười tươi khi đọc xong bài.",
+    "Cô khen bé ngoan và chăm chỉ lắm.", "Bé làm thật tốt trong giờ học này."
+  ];
+
+  const mediumOpeners = [
+    "Sáng nay trời nắng đẹp", "Giờ ra chơi rất vui", "Trong lớp học nhỏ", "Buổi tối ở nhà", "Chiều nay trong sân",
+    "Trên đường đến lớp", "Sau bữa cơm tối", "Ở góc vườn xanh", "Khi nghe cô gọi", "Lúc tan học về",
+    "Trong giờ đọc sách", "Bên cửa sổ sáng", "Ngày chủ nhật vui", "Ở bàn học gọn", "Dưới bóng cây mát",
+    "Sau khi rửa tay", "Trong buổi sinh hoạt", "Khi mẹ đi chợ", "Ở sân trường rộng", "Lúc trời vừa mưa"
+  ];
+  const mediumActions = [
+    "bé đọc từng tiếng thật chậm, sau đó mỉm cười với cô giáo và đọc lại một lần nữa.",
+    "bé xếp sách vở ngay ngắn trên bàn rồi chuẩn bị đọc bài cho cả nhóm nghe nhé.",
+    "bé cùng bạn hát một bài thật vui trước khi vào lớp học và mở sách mới nhé.",
+    "bé tưới nước cho chậu hoa nhỏ, nhặt lá khô bên cạnh rồi rửa tay sạch sẽ.",
+    "bé chào ông bà rồi vào nhà học bài cùng mẹ trong góc bàn sáng nhỏ."
+  ];
+
+  const hardOpeners = [
+    "Sáng thứ hai, bé An dậy sớm, đánh răng và chuẩn bị cặp sách",
+    "Trong giờ đọc, cô giáo chỉ từng dòng để bé nhìn chữ rõ hơn",
+    "Chiều chủ nhật, Lan theo bà ra chợ và quan sát nhiều gian hàng",
+    "Sau cơn mưa, sân trường sạch hơn, những chiếc lá xanh rung nhẹ",
+    "Buổi tối, cả nhà ngồi bên bàn ăn và kể chuyện trong ngày",
+    "Ở góc vườn, Nam chăm chú nhổ cỏ quanh luống rau nhỏ",
+    "Khi vào lớp, bé treo cặp lên ghế rồi lấy sách Tiếng Việt",
+    "Trong thư viện, các bạn đi nhẹ, nói khẽ và chọn sách tranh",
+    "Trên đường về, bé nhìn thấy hàng cây nghiêng mình trong gió",
+    "Giờ thủ công, Mai cắt giấy màu và dán thành bông hoa"
+  ];
+  const hardClosers = [
+    "Bé đọc chậm, đọc rõ từng tiếng, rồi nhớ chào cô trước khi cùng mẹ trở về nhà hôm nay nhé.",
+    "Bạn nhỏ làm từng việc cẩn thận, biết hỏi khi chưa hiểu nên được mọi người khen rất nhiều nhé.",
+    "Bé thấy việc học vui hơn khi kiên nhẫn luyện đọc và cố gắng thêm mỗi ngày ở lớp nhé.",
+    "Cô mỉm cười vì bé biết lắng nghe, nhìn chữ kỹ và làm theo lời dặn thật tốt nhé.",
+    "Bé hoàn thành bài đọc, vui vẻ giúp bạn xếp lại đồ dùng rồi mới ra chơi cùng lớp nhé.",
+    "Bạn nhỏ nhắc mình đọc thong thả, không vội vàng, để câu nào cũng rõ ràng hơn nhé.",
+    "Cả nhóm cùng cổ vũ nhẹ nhàng, giúp bé tự tin hơn trong giờ luyện đọc hôm nay nhé.",
+    "Bé nhìn từng dòng chữ, nghỉ đúng chỗ có dấu phẩy và đọc tiếp thật bình tĩnh nhé.",
+    "Sau bài học, bé kể lại nội dung ngắn gọn để cô biết bé đã hiểu rõ nhé.",
+    "Mẹ khen bé tiến bộ vì biết đọc liền mạch hơn và nhớ giữ giọng rõ ràng nhé."
+  ];
+
+  const specialOpeners = [
+    "Hôm nay lớp Một của bé có buổi trực nhật đầu tuần",
+    "Trong chuyến tham quan công viên, các bạn xếp hàng ngay ngắn",
+    "Buổi sáng mùa xuân, sân trường có nhiều bông hoa mới nở",
+    "Khi cả nhà chuẩn bị bữa tối, bé được mẹ giao vài việc nhỏ",
+    "Trong giờ kể chuyện, cô giáo mở quyển sách có nhiều tranh đẹp",
+    "Chiều thứ bảy, ông dẫn bé ra vườn xem những luống rau xanh",
+    "Sau giờ học, nhóm của Lan ở lại luyện đọc thêm cùng cô",
+    "Ngày hội đọc sách ở trường diễn ra trong không khí vui vẻ",
+    "Trước khi đi ngủ, bé tự soạn sách vở cho ngày học mới",
+    "Trong tiết học ngoài trời, cô đưa cả lớp ra quan sát cây"
+  ];
+  const specialMiddles = [
+    "Bé cùng các bạn lau bảng, kê bàn ghế, nhặt giấy vụn và đặt sách vở vào đúng chỗ.",
+    "Bạn nhỏ lắng nghe lời cô, đi chậm theo hàng và nhường đường cho em bé hơn.",
+    "Bé đọc từng câu, gặp từ chưa quen thì dừng lại hỏi cô để hiểu nghĩa.",
+    "Mọi người vừa làm vừa trò chuyện nhẹ nhàng, nên công việc xong nhanh và rất vui.",
+    "Bé quan sát màu sắc, hình dáng, mùi hương rồi kể lại bằng những câu ngắn gọn.",
+    "Các bạn thay nhau đọc bài, người đọc trước giúp người đọc sau sửa từng tiếng nhỏ.",
+    "Bé nhìn tranh, đoán nội dung câu chuyện, rồi đọc lại để kiểm tra xem mình đoán đúng không.",
+    "Cô chia nhóm nhỏ, mỗi bạn phụ trách một việc để cả lớp cùng hoàn thành bài học.",
+    "Bé chuẩn bị bút chì, sách đọc và thẻ chữ trước khi bắt đầu luyện đọc cùng bạn.",
+    "Khi gặp câu dài, bé dừng nhẹ ở dấu phẩy, hít thở rồi đọc tiếp bằng giọng đều."
+  ];
+  const specialClosers = [
+    "Cuối buổi, bé thấy mình tự tin hơn vì đã cố gắng đọc rõ ràng, chăm chú và không bỏ cuộc nữa.",
+    "Cô khen cả nhóm biết hợp tác, giữ trật tự, hoàn thành nhiệm vụ được giao và giúp nhau đọc tốt hơn.",
+    "Về nhà, bé kể lại câu chuyện cho bố mẹ nghe bằng giọng chậm rãi, vui tươi và rõ từng câu hơn.",
+    "Từ hôm đó, bé thích luyện đọc mỗi ngày vì thấy chữ nào cũng trở nên quen thuộc và gần gũi hơn nhiều.",
+    "Bạn nhỏ hiểu rằng làm việc cẩn thận sẽ giúp lớp học sạch đẹp, ấm áp và ai cũng thấy vui hơn.",
+    "Sau đó, bé ghi nhớ những từ mới, thử đặt câu ngắn và dùng lại trong lúc nói chuyện hằng ngày.",
+    "Cả lớp vỗ tay nhẹ nhàng, khiến bạn nào cũng muốn cố gắng hơn ở lượt đọc sau của mình nữa.",
+    "Bé nhận ra đọc chậm mà chắc giúp mình hiểu bài tốt hơn và không bỏ sót chữ nào nữa.",
+    "Kết thúc tiết học, cô nhắc các bạn giữ sách sạch đẹp để ngày mai đọc tiếp thật vui hơn.",
+    "Bé vui vẻ cất đồ dùng, chào cô và kể rằng hôm nay mình đã đọc được nhiều hơn trước rồi."
+  ];
+
+  const levels = [
+    { level: 'easy', first: easyOpeners, second: easyClosers },
+    { level: 'medium', first: mediumOpeners, second: mediumActions },
+    { level: 'hard', first: hardOpeners, second: hardClosers },
+    { level: 'special', first: specialOpeners, second: specialMiddles, third: specialClosers }
+  ];
+
+  return levels.flatMap(({ level, first, second, third }) =>
+    first.flatMap((start) =>
+      second.map((middle, index) => ({
+        level,
+        text: third ? `${start}. ${middle} ${third[index % third.length]}` : `${start}. ${middle}`
+      }))
+    )
+  );
+};
+
+const PREP_PASSAGES = makePrepReadingLibrary();
+
+const getPrepDifficulty = (currentLevel) =>
+  PREP_READING_LEVELS[Math.min(Math.max(currentLevel - 1, 0), PREP_READING_LEVELS.length - 1)];
+
+const getPrepPassage = (currentLevel) => {
+  const difficulty = getPrepDifficulty(currentLevel);
+  const candidates = PREP_PASSAGES.filter((item) => {
+    const count = normalizeWords(item.text).length;
+    if (item.level === 'easy') return item.level === difficulty && count >= 10 && count <= 20;
+    if (item.level === 'medium') return item.level === difficulty && count >= 20 && count <= 30;
+    if (item.level === 'hard') return item.level === difficulty && count >= 30 && count <= 50;
+    return item.level === difficulty && count >= 50 && count <= 100;
+  });
+  const pool = candidates.length ? candidates : PREP_PASSAGES.filter((item) => item.level === difficulty);
+  return pool[Math.floor(Math.random() * pool.length)].text;
+};
+
+const PREP_FRUITS = [
+  { a: "Chuối", hints: ["tròn xoe", "vàng", "ruột ngọt", "bóc vỏ ăn"] },
+  { a: "Cam", hints: ["có múi", "vị chua ngọt", "vắt nước uống", "thơm"] },
+  { a: "Cherry", hints: ["đỏ chót", "nhỏ xinh", "thành chùm", "trên cây"] },
+  { a: "Dưa hấu", hints: ["vỏ xanh", "ruột đỏ", "nhiều hạt đen", "ăn mát"] },
+  { a: "Táo", hints: ["vỏ đỏ hoặc vàng", "ruột mềm", "ngọt thơm", "giòn"] },
+  { a: "Sầu riêng", hints: ["có gai", "mùi thơm", "vua của các loại quả", "ruột vàng"] },
+  { a: "Xoài", hints: ["màu vàng", "chua ngọt", "làm nước ép", "sinh tố"] },
+  { a: "Nho", hints: ["nhỏ", "tròn", "mọc thành chùm", "ăn tươi"] },
+  { a: "Dừa", hints: ["vỏ cứng", "cơm trắng", "nước ngọt", "quả dừa"] },
+  { a: "Măng cụt", hints: ["màu tím", "nhiều hạt nhỏ", "ngọt thanh", "vỏ dày"] },
+  { a: "Lê", hints: ["vỏ xanh", "ruột trắng", "mềm", "thơm"] },
+  { a: "Dứa", hints: ["nhiều mắt", "ruột vàng", "chua ngọt", "thơm"] },
+  { a: "Dâu tây", hints: ["hình trái tim nhỏ", "màu đỏ", "mọc thành chùm", "rất ngọt"] },
+  { a: "Ổi", hints: ["màu xanh", "ruột trắng hoặc hồng", "hạt cứng", "ăn với muối"] },
+  { a: "Mít", hints: ["vỏ dày", "thành từng múi", "ruột vàng", "rất thơm"] },
+  { a: "Thanh long", hints: ["ruột trắng hoặc hồng", "vỏ có vảy", "mát", "ngọt"] }
+];
+
+const PREP_ANIMALS = [
+  { a: "Mèo", hints: ["kêu meo meo", "thích bắt chuột", "lông mềm", "nhanh nhẹn"] },
+  { a: "Chó", hints: ["sủa gâu gâu", "giữ nhà", "bạn của con người", "trung thành"] },
+  { a: "Voi", hints: ["vòi dài", "tai to", "thân rất to", "phun nước"] },
+  { a: "Chim", hints: ["bay trên trời", "có cánh", "hót líu lo", "nhỏ bé"] },
+  { a: "Thỏ", hints: ["nhảy rất nhanh", "tai dài", "thích ăn cỏ", "hiền"] },
+  { a: "Rùa", hints: ["mai cứng", "đi rất chậm", "sống lâu", "bò chậm"] },
+  { a: "Heo", hints: ["kêu ụt ịt", "thích lăn bùn", "mũi to", "ăn khỏe"] },
+  { a: "Gà trống", hints: ["ò ó o", "buổi sáng", "có mào đỏ", "gáy to"] },
+  { a: "Sư tử", hints: ["bờm dài", "chúa sơn lâm", "sống ở thảo nguyên", "gầm to"] },
+  { a: "Ngựa vằn", hints: ["sọc đen trắng", "chạy nhanh", "ở châu Phi", "thân đẹp"] },
+  { a: "Hươu cao cổ", hints: ["cổ rất dài", "ăn lá trên cây cao", "cao lớn", "hiền"] },
+  { a: "Cá", hints: ["sống dưới nước", "có vây", "có mang", "bơi bằng đuôi"] },
+  { a: "Ếch", hints: ["oanh oanh", "sống ao hồ", "nhảy giỏi", "thích nước"] },
+  { a: "Ngựa", hints: ["kéo xe", "bốn chân", "kêu hí", "chạy nhanh"] },
+  { a: "Trâu", hints: ["kéo cày", "rất khỏe", "ở ruộng", "sừng cong"] },
+  { a: "Khỉ", hints: ["leo trèo giỏi", "thích chuối", "mặt đỏ", "bắt chước người"] }
+];
+
+const DIFFICULTY_LEVELS = ["dễ", "trung bình", "cao", "đặc biệt"];
+const MIN_ANSWER_TIME_MS = 2000;
+
+const getQuizBasePoints = (correct) => {
+  if (correct <= 4) return 0;
+  if (correct <= 6) return 2;
+  if (correct === 7) return 5;
+  if (correct === 8) return 8;
+  if (correct === 9) return 10;
+  return 12;
+};
+
+const getFastAnswerMultiplier = (fastAnswers) => {
+  if (fastAnswers >= 6) return 0;
+  if (fastAnswers >= 3) return 0.5;
+  return 1;
+};
+
+const QUESTION_VARIANTS = {
+  "dễ": [
+    (type, h) => `${type} nào ${h[0]}?`,
+    (type, h) => `Bé chọn ${type.toLowerCase()} ${h[1]} nhé?`,
+    (type, h) => `${type} nào có đặc điểm là ${h[2]}?`,
+    (type, h) => `Đâu là ${type.toLowerCase()} ${h[3]}?`,
+    (type, h) => `${type} nào nhận ra vì ${h[0]}?`,
+    (type, h) => `Bé đoán nhanh: ${type.toLowerCase()} nào ${h[1]}?`,
+    (type, h) => `Bé chọn nhé: ${type.toLowerCase()} nào ${h[2]}?`,
+    (type, h) => `Trong các đáp án, đâu là ${type.toLowerCase()} ${h[3]}?`,
+    (type, h) => `${type} nào thường được nhớ đến vì ${h[0]}?`,
+    (type, h) => `Chọn đáp án đúng: ${type.toLowerCase()} nào ${h[1]}?`,
+    (type, h) => `Bạn nhỏ thấy ${type.toLowerCase()} ${h[2]}, đó là gì?`,
+    (type, h) => `${type} nào có dấu hiệu ${h[3]}?`,
+    (type, h) => `Nếu nghe gợi ý "${h[0]}", bé chọn ${type.toLowerCase()} nào?`,
+    (type, h) => `${type} nào phù hợp với gợi ý: ${h[1]}?`,
+    (type, h) => `Gợi ý đầu tiên là ${h[2]}. Đó là ${type.toLowerCase()} nào?`,
+    (type, h) => `Bé tìm ${type.toLowerCase()} có đặc điểm ${h[3]}.`,
+    (type, h) => `Đố vui nhỏ: ${type.toLowerCase()} nào ${h[0]}?`,
+    (type, h) => `Bé hãy chọn ${type.toLowerCase()} có gợi ý ${h[1]}.`,
+    (type, h) => `Câu hỏi nhanh: đâu là ${type.toLowerCase()} ${h[2]}?`,
+    (type, h) => `Bạn nhỏ cần tìm ${type.toLowerCase()} ${h[3]}.`,
+    (type, h) => `Đáp án nào là ${type.toLowerCase()} có dấu hiệu ${h[0]}?`,
+    (type, h) => `Bé nhớ xem: ${type.toLowerCase()} nào ${h[1]}?`,
+    (type, h) => `Tìm nhanh ${type.toLowerCase()} được tả là ${h[2]}.`,
+    (type, h) => `Một ${type.toLowerCase()} ${h[3]} là đáp án nào?`
+  ],
+  "trung bình": [
+    (type, h) => `${type} nào ${h[0]} và ${h[1]}?`,
+    (type, h) => `Đố bé: ${type.toLowerCase()} nào ${h[1]} và ${h[2]}?`,
+    (type, h) => `${type} nào vừa ${h[2]}, vừa ${h[3]}?`,
+    (type, h) => `Gợi ý có hai ý: ${h[0]}, ${h[2]}. Đó là ${type.toLowerCase()} nào?`,
+    (type, h) => `${type} nào có đặc điểm ${h[1]}, lại còn ${h[3]}?`,
+    (type, h) => `Bé chọn ${type.toLowerCase()} đúng với hai gợi ý: ${h[0]} và ${h[3]}.`,
+    (type, h) => `${type} nào thường ${h[2]} và có vẻ ${h[1]}?`,
+    (type, h) => `Câu đố vừa: ${type.toLowerCase()} nào ${h[3]} nhưng cũng ${h[0]}?`,
+    (type, h) => `${type} nào khớp với gợi ý "${h[1]}, ${h[2]}"?`,
+    (type, h) => `Nếu một ${type.toLowerCase()} ${h[0]} và ${h[2]}, bé chọn gì?`,
+    (type, h) => `${type} nào được tả là ${h[1]}, ${h[3]}?`,
+    (type, h) => `Tìm ${type.toLowerCase()} có hai dấu hiệu: ${h[0]} và ${h[1]}.`,
+    (type, h) => `${type} nào vừa có dấu hiệu ${h[2]}, vừa có dấu hiệu ${h[3]}?`,
+    (type, h) => `Đáp án nào là ${type.toLowerCase()} ${h[0]}, ${h[3]}?`,
+    (type, h) => `Bé nối hai manh mối ${h[1]} và ${h[2]} để tìm ${type.toLowerCase()} nào?`,
+    (type, h) => `${type} nào được nhắc tới với ${h[0]} và ${h[2]}?`
+  ],
+  "cao": [
+    (type, h) => `${type} nào có đủ ba dấu hiệu: ${h[0]}, ${h[1]}, ${h[2]}?`,
+    (type, h) => `Bé suy luận: ${type.toLowerCase()} nào ${h[1]}, ${h[2]} và ${h[3]}?`,
+    (type, h) => `${type} nào được tả bằng ba manh mối ${h[0]}, ${h[2]}, ${h[3]}?`,
+    (type, h) => `Chọn ${type.toLowerCase()} khớp nhất với: ${h[0]}, ${h[1]}, ${h[3]}.`,
+    (type, h) => `${type} nào vừa ${h[0]}, vừa ${h[2]}, lại ${h[3]}?`,
+    (type, h) => `Có một ${type.toLowerCase()} ${h[1]}, ${h[2]}, ${h[3]}. Đó là gì?`,
+    (type, h) => `${type} nào không chỉ ${h[0]} mà còn ${h[1]} và ${h[2]}?`,
+    (type, h) => `Bé tìm đáp án khi nghe ba gợi ý: ${h[1]}, ${h[2]}, ${h[3]}.`,
+    (type, h) => `${type} nào có ba đặc điểm liên tiếp: ${h[0]}, ${h[2]}, ${h[1]}?`,
+    (type, h) => `Đáp án đúng phải ${h[3]}, ${h[0]} và ${h[1]}. Là ${type.toLowerCase()} nào?`,
+    (type, h) => `Tìm ${type.toLowerCase()} phù hợp nhất với ${h[2]}, ${h[0]}, ${h[3]}.`,
+    (type, h) => `${type} nào được nhận ra nhờ ${h[1]}, ${h[3]}, ${h[0]}?`,
+    (type, h) => `Nếu cô đọc ${h[2]}, ${h[3]}, ${h[1]}, bé chọn ${type.toLowerCase()} nào?`,
+    (type, h) => `${type} nào có các dấu hiệu ${h[0]}, ${h[1]} và ${h[3]}?`,
+    (type, h) => `Ba manh mối là ${h[3]}, ${h[2]}, ${h[0]}. Đáp án là ${type.toLowerCase()} nào?`,
+    (type, h) => `${type} nào vừa được tả là ${h[1]}, vừa ${h[0]}, vừa ${h[2]}?`
+  ],
+  "đặc biệt": [
+    (type, h) => `${type} nào có cả bốn dấu hiệu ${h[0]}, ${h[1]}, ${h[2]}, ${h[3]}?`,
+    (type, h) => `Bé chọn đáp án chính xác nhất: ${h[0]}, ${h[1]}, ${h[2]}, ${h[3]}.`,
+    (type, h) => `Nghe đủ bốn manh mối ${h[3]}, ${h[2]}, ${h[1]}, ${h[0]}, bé đoán ${type.toLowerCase()} nào?`,
+    (type, h) => `${type} nào có đủ đặc điểm ${h[1]}, ${h[3]}, ${h[0]}, ${h[2]}?`,
+    (type, h) => `Bé tìm ${type.toLowerCase()} vừa ${h[0]}, vừa ${h[1]}, vừa ${h[2]}, vừa ${h[3]}.`,
+    (type, h) => `Đâu là đáp án đúng khi cả bốn gợi ý đều đúng: ${h[0]}, ${h[2]}, ${h[1]}, ${h[3]}?`,
+    (type, h) => `Bé cần nhớ bốn ý ${h[1]}, ${h[0]}, ${h[3]}, ${h[2]} để chọn ${type.toLowerCase()} nào?`,
+    (type, h) => `Câu suy luận: ${type.toLowerCase()} nào khớp với toàn bộ gợi ý ${h[2]}, ${h[3]}, ${h[0]}, ${h[1]}?`,
+    (type, h) => `${type} nào vừa có dấu hiệu ${h[0]}, vừa có dấu hiệu ${h[1]}, vừa có dấu hiệu ${h[2]}, vừa có dấu hiệu ${h[3]}?`,
+    (type, h) => `Trong các đáp án, chọn ${type.toLowerCase()} hợp với ${h[3]}, ${h[1]}, ${h[2]}, ${h[0]}.`,
+    (type, h) => `Nếu bé ghép bốn manh mối ${h[0]}, ${h[3]}, ${h[2]}, ${h[1]}, đáp án là ${type.toLowerCase()} nào?`,
+    (type, h) => `${type.toLowerCase()} nào được miêu tả bằng ${h[1]}, ${h[2]}, ${h[3]}, ${h[0]}?`,
+    (type, h) => `${type} nào có bốn đặc điểm nổi bật: ${h[2]}, ${h[0]}, ${h[1]}, ${h[3]}?`,
+    (type, h) => `Bé chọn thật kỹ: ${type.toLowerCase()} nào ${h[3]}, ${h[0]}, ${h[2]} và ${h[1]}?`,
+    (type, h) => `Đáp án nào đúng nhất với chuỗi gợi ý ${h[0]} - ${h[1]} - ${h[2]} - ${h[3]}?`,
+    (type, h) => `${type.toLowerCase()} nào có đủ ${h[2]}, ${h[1]}, ${h[0]}, ${h[3]}?`
+  ]
+};
+
+const makePrepQuestion = (item, group, difficulty, variantIndex) => {
+  const type = group === 'fruit' ? "Quả" : "Con";
+  const base = QUESTION_VARIANTS[difficulty][variantIndex](type, item.hints);
+  const pool = group === 'fruit' ? PREP_FRUITS : PREP_ANIMALS;
+  const wrongs = pool
+    .filter((x) => x.a !== item.a)
+    .map((x) => x.a)
+    .sort(() => Math.random() - 0.5);
+  const options = [item.a];
+  for (const wrong of wrongs) {
+    if (options.length >= 4) break;
+    options.push(wrong);
+  }
+  return { q: base, a: item.a, options: options.sort(() => Math.random() - 0.5), difficulty };
+};
+
+const PREP_RIDDLES = (() => {
+  const byDifficulty = DIFFICULTY_LEVELS.reduce((acc, difficulty) => {
+    acc[difficulty] = [];
+    return acc;
+  }, {});
+  const seen = new Set();
+  const sources = [
+    { group: 'fruit', pool: PREP_FRUITS },
+    { group: 'animal', pool: PREP_ANIMALS }
+  ];
+
+  for (const difficulty of DIFFICULTY_LEVELS) {
+    for (const { group, pool } of sources) {
+      for (const item of pool) {
+        for (let variantIndex = 0; variantIndex < QUESTION_VARIANTS[difficulty].length; variantIndex++) {
+          const question = makePrepQuestion(item, group, difficulty, variantIndex);
+          if (!seen.has(question.q)) {
+            byDifficulty[difficulty].push(question);
+            seen.add(question.q);
+          }
+        }
+      }
+    }
+  }
+
+  return DIFFICULTY_LEVELS.flatMap((difficulty) => byDifficulty[difficulty].slice(0, 500));
+})();
+
+const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
+
+const buildPrepQuizRound = (currentLevel) => {
+  const currentDifficulty = DIFFICULTY_LEVELS[Math.min(Math.max(currentLevel - 1, 0), DIFFICULTY_LEVELS.length - 1)];
+  const byDifficulty = DIFFICULTY_LEVELS.reduce((acc, difficulty) => {
+    acc[difficulty] = shuffle(PREP_RIDDLES.filter((q) => q.difficulty === difficulty));
+    return acc;
+  }, {});
+
+  const currentQuestions = byDifficulty[currentDifficulty].slice(0, 10);
+  if (currentQuestions.length >= 10) return currentQuestions;
+
+  const fallback = shuffle(DIFFICULTY_LEVELS.flatMap((difficulty) => byDifficulty[difficulty]));
+  return [...currentQuestions, ...fallback].slice(0, 10);
+};
 
 export default function ReadingTest() {
   const navigate = useNavigate();
@@ -42,17 +370,41 @@ export default function ReadingTest() {
   const [grammarQ, setGrammarQ] = useState(null);
   const [writingTopic, setWritingTopic] = useState('');
   const [writingContent, setWritingContent] = useState('');
+  const [prepQuizIndex, setPrepQuizIndex] = useState(0);
+  const [prepQuizQ, setPrepQuizQ] = useState(null);
+  const [prepQuizQueue, setPrepQuizQueue] = useState([]);
+  const [canAnswer, setCanAnswer] = useState(false);
 
   const [targetText, setTargetText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [scoreData, setScoreData] = useState(null);
   const startTimeRef = useRef(null);
+  const transcriptRef = useRef("");
 
   const [timeLeft, setTimeLeft] = useState(0);
   const [maxTime, setMaxTime] = useState(0);
   const timerRef = useRef(null);
   const recognitionRef = useRef(null);
+  const answerDelayRef = useRef(null);
+  const questionStartedAtRef = useRef(null);
+  const fastAnswerCountRef = useRef(0);
+
+  const beginAnswerDelay = () => {
+    clearTimeout(answerDelayRef.current);
+    questionStartedAtRef.current = Date.now();
+    setCanAnswer(false);
+    answerDelayRef.current = setTimeout(() => setCanAnswer(true), MIN_ANSWER_TIME_MS);
+  };
+
+  const recordAnswerTiming = () => {
+    const elapsedMs = Date.now() - (questionStartedAtRef.current || Date.now());
+    const wasFast = elapsedMs < MIN_ANSWER_TIME_MS;
+    if (wasFast) {
+      fastAnswerCountRef.current += 1;
+    }
+    return wasFast;
+  };
 
   // --- INTERVENTION ENGINE ---
   useEffect(() => {
@@ -109,19 +461,23 @@ export default function ReadingTest() {
 
   // --- COUNTDOWN EFFECT ---
   useEffect(() => {
-    if ((screen === 'grammar' || (screen === 'reading' && isRecording)) && timeLeft > 0) {
+    if ((screen === 'grammar' || (screen === 'reading' && (isRecording || category === 'prep_riddle'))) && timeLeft > 0) {
       timerRef.current = setTimeout(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
       return () => clearTimeout(timerRef.current);
     } else if (screen === 'grammar' && timeLeft === 0) {
       finishGrammar(stats, wrongAnswers, true);
+    } else if (screen === 'reading' && category === 'prep_riddle' && timeLeft === 0) {
+      finishGrammar(stats, wrongAnswers, true);
     } else if (screen === 'reading' && isRecording && timeLeft === 0) {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
     }
-  }, [timeLeft, screen, isRecording, stats, wrongAnswers]);
+  }, [timeLeft, screen, isRecording, category, stats, wrongAnswers]);
+
+  useEffect(() => () => clearTimeout(answerDelayRef.current), []);
 
   // --- PROCEDURAL GRAMMAR GENERATOR ---
   const generateProceduralGrammar = (lvl) => {
@@ -291,6 +647,13 @@ export default function ReadingTest() {
 
     const shuffledOpts = [...qObj.opts].sort(() => Math.random() - 0.5);
     setGrammarQ({ ...qObj, opts: shuffledOpts });
+    beginAnswerDelay();
+  };
+
+  const setPrepQuestion = (question) => {
+    const opts = shuffle(question.options);
+    setPrepQuizQ({ q: question.q, ans: question.a, opts, difficulty: question.difficulty });
+    beginAnswerDelay();
   };
 
   const getWritingTopic = () => {
@@ -302,32 +665,7 @@ export default function ReadingTest() {
     return topics[Math.floor(Math.random() * topics.length)];
   };
 
-  const getReadingText = (catId) => {
-    if (catId === 'prep_letters') {
-      let arr = [];
-      for(let i=0; i<10; i++) arr.push(PREP_LETTERS[Math.floor(Math.random() * PREP_LETTERS.length)]);
-      return arr.join(" ");
-    }
-    if (catId === 'prep_words') {
-      let wordPool = level <= 2 ? PREP_SINGLE_WORDS : PREP_COMPOUND_WORDS;
-      let wordCount = 5;
-      
-      if (level === 2) wordCount = 10;
-      else if (level === 3) wordCount = 5;
-      else if (level === 4) wordCount = 10;
-      else if (level >= 5) wordCount = 15;
-
-      let availableWords = [...wordPool].sort(() => Math.random() - 0.5);
-      let arr = [];
-      for(let i=0; i<wordCount; i++) {
-        arr.push(availableWords[i % availableWords.length]);
-      }
-      return arr.join(" ");
-    }
-    return GRADE3_PASSAGES[Math.floor(Math.random() * GRADE3_PASSAGES.length)];
-  };
-
-  const saveResults = (earnedPoints, timeSpentSec, specificStats = {}, levelUpMsg = "", wrongDetails = []) => {
+  const saveResults = (earnedPoints, timeSpentSec, specificStats = {}, levelUpMsg = "", wrongDetails = [], behaviorMsg = "") => {
     let multiplier = 1;
     if (interventions[category] === 'nerfed') multiplier = 0.5;
     if (interventions[category] === 'boosted') multiplier = 2;
@@ -367,6 +705,7 @@ export default function ReadingTest() {
     let interventionMsg = "";
     if (multiplier === 0.5) interventionMsg = "Phần thưởng môn này đã bị giảm 50% do làm quá nhiều!\n";
     if (multiplier === 2) interventionMsg = "Tuyệt vời! Bạn nhận được x2 Điểm Khuyến khích!\n";
+    interventionMsg += behaviorMsg;
 
     setStats({ ...stats, finalPoints, timeSpentSec, interventionMsg, levelUpMsg });
     setWrongAnswers(wrongDetails);
@@ -379,6 +718,8 @@ export default function ReadingTest() {
     setStats({ correct: 0, incorrect: 0, startTime: Date.now() });
     setUsedQuestions(new Set());
     setWrongAnswers([]);
+    fastAnswerCountRef.current = 0;
+    setCanAnswer(false);
 
     if (catId === 'grammar') {
       setScreen('grammar');
@@ -396,25 +737,59 @@ export default function ReadingTest() {
       setWritingContent('');
     } else {
       setScreen('reading');
-      setTargetText(getReadingText(catId));
+      setTargetText('');
       setTranscript("");
       setScoreData(null);
-      let calculatedTime = 30;
-      if (catId === 'prep_words' || catId === 'prep_letters') {
-         if (level <= 1) calculatedTime = 20;
-         else if (level === 2) calculatedTime = 30;
-         else if (level === 3) calculatedTime = 30;
-         else if (level === 4) calculatedTime = 40;
-         else calculatedTime = 60;
+      if (catId === 'prep_riddle') {
+        const round = buildPrepQuizRound(level);
+        setPrepQuizIndex(0);
+        setPrepQuizQueue(round);
+        setMaxTime(120);
+        setTimeLeft(120);
+        setPrepQuestion(round[0]);
+      } else if (catId === 'prep_passage') {
+        setTargetText(getPrepPassage(level));
+        const calculatedTime = level <= 1 ? 60 : (level === 2 ? 75 : (level === 3 ? 90 : 105));
+        setMaxTime(calculatedTime);
+        setTimeLeft(calculatedTime);
       } else {
-         calculatedTime = Math.max(30, 90 - (level * 10)); 
+        let calculatedTime = 30;
+        calculatedTime = Math.max(30, 90 - (level * 10)); 
+        setMaxTime(calculatedTime);
+        setTimeLeft(calculatedTime);
       }
-      setMaxTime(calculatedTime);
-      setTimeLeft(calculatedTime);
+    }
+  };
+
+  const handlePrepAnswer = (ans) => {
+    if (!canAnswer) return;
+    recordAnswerTiming();
+    const isCorrect = ans === prepQuizQ.ans;
+    const newStats = {
+      correct: stats.correct + (isCorrect ? 1 : 0),
+      incorrect: stats.incorrect + (isCorrect ? 0 : 1),
+      startTime: stats.startTime
+    };
+    const newWrongs = [...wrongAnswers];
+    if (!isCorrect) {
+      newWrongs.push({ q: prepQuizQ.q, userAns: ans, correctAns: prepQuizQ.ans });
+    }
+
+    setStats(newStats);
+    setWrongAnswers(newWrongs);
+
+    if (prepQuizIndex + 1 < 10) {
+      const nextIndex = prepQuizIndex + 1;
+      setPrepQuizIndex(nextIndex);
+      setPrepQuestion(prepQuizQueue[nextIndex]);
+    } else {
+      finishGrammar(newStats, newWrongs);
     }
   };
 
   const handleGrammarAnswer = (ans) => {
+    if (!canAnswer) return;
+    recordAnswerTiming();
     const isCorrect = ans === grammarQ.ans;
     let newStats = { ...stats };
     let newWrongs = [...wrongAnswers];
@@ -438,27 +813,29 @@ export default function ReadingTest() {
   const finishGrammar = (finalStats, finalWrongs = [], isTimeout = false) => {
     clearTimeout(timerRef.current);
     const timeSpentSec = maxTime - timeLeft;
-    let earnedPoints = finalStats.correct;
+    const fastAnswers = fastAnswerCountRef.current;
+    const fastMultiplier = getFastAnswerMultiplier(fastAnswers);
+    let earnedPoints = getQuizBasePoints(finalStats.correct);
+    let speedBonus = 0;
     
     // Speed Bonus
     if (finalStats.correct >= 8) {
-      if (timeLeft > maxTime * 0.5) earnedPoints += 5;
-      else if (timeLeft > maxTime * 0.2) earnedPoints += 2;
+      if (timeLeft > maxTime * 0.5) speedBonus = 5;
+      else if (timeLeft > maxTime * 0.2) speedBonus = 2;
     }
+    earnedPoints = Math.round((earnedPoints + speedBonus) * fastMultiplier);
 
     // Level Adjustment
     let newLevel = level;
     let levelMessage = "";
     if (finalStats.correct >= 8) {
-      newLevel += 1;
-      levelMessage = "Tuyệt vời! Bé đã được TĂNG CẤP ĐỘ KHÓ Tiếng Việt 🚀";
+      newLevel = Math.min(level + 1, DIFFICULTY_LEVELS.length);
     } else if (finalStats.correct <= 4 && level > 1) {
       newLevel -= 1;
-      levelMessage = "Cấp độ đã được giảm xuống để bé ôn tập lại 🧸";
     }
     
     if (isTimeout) {
-      levelMessage = "⏰ Hết giờ. Bạn cần cố gắng làm bài nhanh hơn!\n" + levelMessage;
+      levelMessage = "⏰ Hết giờ. Bạn cần cố gắng làm bài nhanh hơn!";
     }
 
     if (newLevel !== level) {
@@ -466,7 +843,21 @@ export default function ReadingTest() {
       localStorage.setItem(`vietLevel_${currentUser}`, newLevel.toString());
     }
 
-    saveResults(earnedPoints, timeSpentSec, { correct: finalStats.correct, incorrect: finalStats.incorrect }, levelMessage, finalWrongs || []);
+    let behaviorMsg = "";
+    if (fastAnswers >= 6) {
+      behaviorMsg = `Bài làm có ${fastAnswers} câu trả lời dưới 2 giây nên chưa được cộng thưởng. Bé hãy đọc kỹ hơn nhé!\n`;
+    } else if (fastAnswers >= 3) {
+      behaviorMsg = `Bài làm có ${fastAnswers} câu trả lời dưới 2 giây nên điểm thưởng giảm 50%.\n`;
+    }
+
+    saveResults(
+      earnedPoints,
+      timeSpentSec,
+      { correct: finalStats.correct, incorrect: finalStats.incorrect, fastAnswers },
+      levelMessage,
+      finalWrongs || [],
+      behaviorMsg
+    );
   };
 
   const submitWriting = () => {
@@ -498,6 +889,7 @@ export default function ReadingTest() {
       recognition.onstart = () => {
         setIsRecording(true);
         setTranscript("");
+        transcriptRef.current = "";
         startTimeRef.current = Date.now();
       };
       
@@ -506,12 +898,13 @@ export default function ReadingTest() {
         for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript + " ";
         }
+        transcriptRef.current = currentTranscript.trim();
         setTranscript(currentTranscript);
       };
       
       recognition.onend = () => {
         setIsRecording(false);
-        calculateScore(transcript);
+        calculateScore(transcriptRef.current);
       };
       
       recognition.start();
@@ -519,13 +912,11 @@ export default function ReadingTest() {
   };
 
   const calculateScore = (finalTranscript) => {
-    if (!finalTranscript) return;
     const timeSpentMs = Date.now() - startTimeRef.current;
     const timeSpentSec = Math.round(timeSpentMs / 1000);
-    const minutes = timeSpentMs / 60000;
     
     const targetWords = targetText.toLowerCase().replace(/[.,!?]/g, '').split(' ').filter(w => w);
-    const spokenWords = finalTranscript.toLowerCase().split(' ').filter(w => w);
+    const spokenWords = (finalTranscript || '').toLowerCase().split(' ').filter(w => w);
     
     let correctWords = 0;
     targetWords.forEach(word => {
@@ -546,11 +937,9 @@ export default function ReadingTest() {
     let newLevel = level;
     let levelMessage = "";
     if (scoreData.accuracy >= 90) {
-      newLevel += 1;
-      levelMessage = "Tuyệt vời! Bé đọc rất chuẩn, TĂNG CẤP ĐỘ KHÓ Tiếng Việt 🚀";
+      newLevel = Math.min(level + 1, DIFFICULTY_LEVELS.length);
     } else if (scoreData.accuracy <= 50 && level > 1) {
       newLevel -= 1;
-      levelMessage = "Cấp độ đã được giảm xuống để bé đọc dễ hơn 🧸";
     }
 
     if (newLevel !== level) {
@@ -622,7 +1011,7 @@ export default function ReadingTest() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {grammarQ?.opts.map((opt, i) => (
-            <button key={i} onClick={() => handleGrammarAnswer(opt)} style={{ fontSize: '1.2rem', padding: '15px', textAlign: 'left', backgroundColor: '#FFF', color: '#333', border: '1px solid #CCC' }}>
+            <button key={i} onClick={() => handleGrammarAnswer(opt)} disabled={!canAnswer} style={{ fontSize: '1.2rem', padding: '15px', textAlign: 'left', backgroundColor: canAnswer ? '#FFF' : '#F5F5F5', color: canAnswer ? '#333' : '#999', border: '1px solid #CCC', cursor: canAnswer ? 'pointer' : 'not-allowed' }}>
               {opt}
             </button>
           ))}
@@ -651,17 +1040,45 @@ export default function ReadingTest() {
 
   if (screen === 'reading') {
     const timerColor = timeLeft > maxTime * 0.5 ? '#4CAF50' : (timeLeft > maxTime * 0.2 ? '#FF9800' : '#FF5252');
+    if (!isGrade3 && category === 'prep_riddle') {
+      return (
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ color: '#2E7D32', margin: 0 }}>Đố vui hoa quả & con vật</h2>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#E65100' }}>
+              Câu {prepQuizIndex + 1}/10
+            </div>
+          </div>
+          <div style={{ marginTop: '10px', textAlign: 'right', fontWeight: 'bold', color: timerColor }}>
+            ⏱ {timeLeft}s
+          </div>
+          <div style={{ fontSize: '1.3rem', margin: '30px 0', padding: '20px', background: '#FFF8E1', borderRadius: '10px', minHeight: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            {prepQuizQ?.q}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
+            {prepQuizQ?.opts.map((opt, i) => (
+              <button key={i} onClick={() => handlePrepAnswer(opt)} disabled={!canAnswer} style={{ fontSize: '1.2rem', padding: '15px', textAlign: 'left', cursor: canAnswer ? 'pointer' : 'not-allowed', opacity: canAnswer ? 1 : 0.65 }}>
+                {opt}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => navigate('/student')} style={{ marginTop: '20px', width: '100%', backgroundColor: '#888' }}>
+            Quay về trang chủ
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ color: '#2E7D32', margin: 0 }}>{category.includes('prep') ? 'Đọc chữ cái / Từ' : 'Luyện Đọc'} 🎙️</h2>
+          <h2 style={{ color: '#2E7D32', margin: 0 }}>{category === 'prep_passage' ? 'Đọc đoạn văn' : 'Luyện Đọc'} 🎙️</h2>
           {isRecording && (
             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: timerColor, padding: '5px 15px', border: `2px solid ${timerColor}`, borderRadius: '20px' }}>
               ⏱ {timeLeft}s
             </div>
           )}
         </div>
-        <div style={{ padding: '30px', margin: '20px 0', background: '#f5f5f5', borderRadius: '10px', fontSize: category.includes('prep') ? '3rem' : '1.5rem', lineHeight: '1.6', fontWeight: category.includes('prep') ? 'bold' : 'normal' }}>
+        <div style={{ padding: '30px', margin: '20px 0', background: '#f5f5f5', borderRadius: '10px', fontSize: '1.5rem', lineHeight: '1.6', fontWeight: 'normal' }}>
           {targetText}
         </div>
         {!scoreData ? (
