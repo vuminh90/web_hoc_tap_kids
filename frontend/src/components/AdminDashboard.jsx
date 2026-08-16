@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { pullFromServer, syncToServer } from '../sync';
+import ParentLearningDashboard from './ParentLearningDashboard';
+import GameSiteAdmin from './GameSiteAdmin';
 
 const DEFAULT_SETTINGS = {
   costPerSpin: 200,
@@ -31,15 +33,67 @@ const parseDate = (dateString) => {
   }
 };
 
+const readJsonMap = (key) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const levelNames = ['Mới bắt đầu', 'Rất dễ', 'Dễ', 'Dễ+', 'Trung bình', 'Trung bình+', 'Khó', 'Khó+', 'Rất khó', 'Thử thách'];
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const getLevelName = (level, maxLevel = 10) => {
+  const index = Math.ceil((clamp(level || 1, 1, maxLevel) / maxLevel) * levelNames.length) - 1;
+  return levelNames[clamp(index, 0, levelNames.length - 1)];
+};
+
+const getLearningLevelRows = (childId) => {
+  const isDuc = childId === 'vuanhduc';
+  const mathDifficulty = readJsonMap(`mathDifficultyLevels_${childId}`);
+  const mathTime = readJsonMap(`mathTimeLevels_${childId}`);
+  const vietnamese = readJsonMap(`vietnameseModuleLevels_${childId}`);
+  const mathMax = isDuc
+    ? { algebra: 20, geometry: 100, logic: 10, all: 10 }
+    : { basic_math: 8, visual_math: 8 };
+  const mathNames = isDuc
+    ? { algebra: 'Toán - Đại số', geometry: 'Toán - Hình học', logic: 'Toán - Có lời văn', all: 'Toán - Tổng hợp' }
+    : { basic_math: 'Toán - Cộng trừ', visual_math: 'Toán - Đếm hình' };
+  const vietNames = isDuc
+    ? { grammar: 'Tiếng Việt - Ngữ pháp', writing: 'Tiếng Việt - Tập làm văn', reading: 'Tiếng Việt - Tập đọc' }
+    : { prep_passage: 'Tiếng Việt - Đọc đoạn văn', prep_riddle: 'Tiếng Việt - Đố vui' };
+
+  const mathRows = Object.keys(mathNames).map(key => {
+    const difficultyLevel = parseInt(mathDifficulty[key] || '1', 10);
+    const timeLevel = parseInt(mathTime[key] || '1', 10);
+    return {
+      module: mathNames[key],
+      difficulty: getLevelName(difficultyLevel, mathMax[key] || 10),
+      detail: `Độ khó ${difficultyLevel}/${mathMax[key] || 10} · Nhịp thời gian ${timeLevel}/10`
+    };
+  });
+  const vietRows = Object.keys(vietNames).map(key => {
+    const moduleLevel = parseInt(vietnamese[key] || localStorage.getItem(`vietLevel_${childId}`) || '1', 10);
+    return {
+      module: vietNames[key],
+      difficulty: getLevelName(moduleLevel, 10),
+      detail: `Trình độ ${moduleLevel}/10`
+    };
+  });
+  return [...mathRows, ...vietRows];
+};
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'analytics'
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [activeTab, setActiveTab] = useState('learning');
   const [ducPoints, setDucPoints] = useState(0);
   const [thuPoints, setThuPoints] = useState(0);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [isSyncing, setIsSyncing] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [selectedChild, setSelectedChild] = useState('vuanhduc');
   const [pointChange, setPointChange] = useState('');
@@ -55,6 +109,36 @@ export default function AdminDashboard() {
   const loadPoints = () => {
     setDucPoints(parseInt(localStorage.getItem('points_vuanhduc') || '0', 10));
     setThuPoints(parseInt(localStorage.getItem('points_vuanhthu') || '0', 10));
+  };
+
+  const loadSyncedParentData = async () => {
+    setIsSyncing(true);
+    await Promise.all([pullFromServer('vuanhduc'), pullFromServer('vuanhthu')]);
+    loadPoints();
+    setIsSyncing(false);
+  };
+
+  const handleParentLogin = async () => {
+    if (!passwordInput) return;
+    setIsLoggingIn(true);
+    setLoginError('');
+    try {
+      const response = await fetch('/api/parent/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: passwordInput })
+      });
+      if (!response.ok) throw new Error('Mật khẩu không đúng hoặc máy chủ chưa sẵn sàng.');
+      const data = await response.json();
+      sessionStorage.setItem('parentAuthToken', data.token);
+      setIsAuthenticated(true);
+      setPasswordInput('');
+      await loadSyncedParentData();
+    } catch (error) {
+      setLoginError(error.message || 'Không thể đăng nhập.');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const processAnalyticsData = (history, filterType) => {
@@ -251,18 +335,19 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    const init = async () => {
-      setIsSyncing(true);
-      await pullFromServer('vuanhduc');
-      await pullFromServer('vuanhthu');
-      loadPoints();
-      setIsSyncing(false);
-    };
-    init();
-
     const savedSettings = localStorage.getItem('gachaSettings');
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
+    }
+    const token = sessionStorage.getItem('parentAuthToken');
+    if (token) {
+      fetch('/api/parent/verify', { headers: { Authorization: `Bearer ${token}` } })
+        .then(response => {
+          if (!response.ok) throw new Error('Phiên hết hạn');
+          setIsAuthenticated(true);
+          return loadSyncedParentData();
+        })
+        .catch(() => sessionStorage.removeItem('parentAuthToken'));
     }
   }, []);
 
@@ -342,7 +427,10 @@ export default function AdminDashboard() {
       localStorage.removeItem(`inventory_${selectedChild}`);
       localStorage.removeItem(`learningStats_${selectedChild}`);
       localStorage.removeItem(`mathLevel_${selectedChild}`);
+      localStorage.removeItem(`mathDifficultyLevels_${selectedChild}`);
+      localStorage.removeItem(`mathTimeLevels_${selectedChild}`);
       localStorage.removeItem(`vietLevel_${selectedChild}`);
+      localStorage.removeItem(`vietnameseModuleLevels_${selectedChild}`);
       loadPoints();
       loadChildData();
       syncToServer(selectedChild);
@@ -366,7 +454,7 @@ export default function AdminDashboard() {
     syncToServer(selectedChild);
   };
 
-  const childName = selectedChild === 'vuanhduc' ? 'Anh Đức (Lớp 3)' : 'Anh Thư (Lớp 1)';
+  const childName = selectedChild === 'vuanhduc' ? 'Anh Đức (Lớp 4)' : 'Anh Thư (Lớp 1)';
 
   if (isSyncing) {
     return <div style={{ textAlign: 'center', marginTop: '50px' }}><h2>Đang đồng bộ dữ liệu từ máy chủ... 🔄</h2></div>;
@@ -382,22 +470,18 @@ export default function AdminDashboard() {
           value={passwordInput} 
           onChange={(e) => setPasswordInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              if (passwordInput === 'vuminh1990') setIsAuthenticated(true);
-              else alert('Mật khẩu không đúng!');
-            }
+            if (e.key === 'Enter') handleParentLogin();
           }}
           placeholder="Nhập mật khẩu..." 
           style={{ width: '100%', padding: '10px', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }}
         />
         <button 
-          onClick={() => {
-            if (passwordInput === 'vuminh1990') setIsAuthenticated(true);
-            else alert('Mật khẩu không đúng!');
-          }}
+          disabled={isLoggingIn}
+          onClick={handleParentLogin}
           style={{ width: '100%', backgroundColor: '#1976D2', color: 'white', padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-          Đăng nhập
+          {isLoggingIn ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>
+        {loginError && <p style={{ color: '#C62828' }}>{loginError}</p>}
         <button onClick={() => navigate('/student')} style={{ marginTop: '15px', background: 'none', color: '#888', border: 'none', textDecoration: 'underline', cursor: 'pointer', width: '100%', boxShadow: 'none' }}>
           Quay về trang chủ
         </button>
@@ -409,7 +493,7 @@ export default function AdminDashboard() {
     <div className="card" style={{ textAlign: 'left' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <h2 style={{ color: '#2196F3', margin: 0 }}>👨‍💻 Khu Vực Phụ Huynh</h2>
-        <button onClick={() => { setIsAuthenticated(false); setPasswordInput(''); navigate('/'); }} style={{ padding: '8px 15px', backgroundColor: '#888', boxShadow: '0 4px 0 #555' }}>
+        <button onClick={() => { sessionStorage.removeItem('parentAuthToken'); setIsAuthenticated(false); setPasswordInput(''); navigate('/'); }} style={{ padding: '8px 15px', backgroundColor: '#888', boxShadow: '0 4px 0 #555' }}>
           Đăng xuất
         </button>
       </div>
@@ -425,7 +509,7 @@ export default function AdminDashboard() {
             transform: selectedChild === 'vuanhduc' ? 'scale(1.02)' : 'scale(1)', transition: 'all 0.2s'
           }}
         >
-          <h3 style={{ margin: '0 0 10px 0', color: '#1565C0' }}>Anh Đức (Lớp 3)</h3>
+          <h3 style={{ margin: '0 0 10px 0', color: '#1565C0' }}>Anh Đức (Lớp 4)</h3>
           <strong style={{ color: '#E65100', fontSize: '2rem' }}>{ducPoints} 💎</strong>
         </div>
 
@@ -454,12 +538,12 @@ export default function AdminDashboard() {
           🛠 Quản lý & Cấu hình
         </button>
         <button 
-          onClick={() => setActiveTab('analytics')}
+          onClick={() => setActiveTab('learning')}
           style={{ 
-            flex: 1, background: 'none', color: activeTab === 'analytics' ? '#1976D2' : '#888', 
-            borderBottom: activeTab === 'analytics' ? '4px solid #1976D2' : 'none', borderRadius: 0, padding: '10px'
+            flex: 1, background: 'none', color: activeTab === 'learning' ? '#1976D2' : '#888',
+            borderBottom: activeTab === 'learning' ? '4px solid #1976D2' : 'none', borderRadius: 0, padding: '10px'
           }}>
-          📊 Đánh giá Năng lực học tập
+          📊 Trung tâm học tập
         </button>
         <button 
           onClick={() => setActiveTab('history')}
@@ -543,7 +627,12 @@ export default function AdminDashboard() {
             <button onClick={addReward} style={{ backgroundColor: '#2196F3', padding: '10px', marginTop: '10px', display: 'block' }}>➕ Thêm phần thưởng</button>
             <button onClick={handleSaveSettings} style={{ backgroundColor: '#4CAF50', width: '100%', marginTop: '20px', boxShadow: '0 6px 0 #388E3C' }}>💾 Lưu Cấu Hình</button>
           </div>
+          <GameSiteAdmin selectedChild={selectedChild} />
         </>
+      )}
+
+      {activeTab === 'learning' && (
+        <ParentLearningDashboard childId={selectedChild} childName={childName} />
       )}
 
       {activeTab === 'analytics' && analyticsData && (
@@ -576,6 +665,19 @@ export default function AdminDashboard() {
                   <li key={idx} style={{ marginBottom: '5px' }}>{rm}</li>
                 ))}
               </ul>
+            </div>
+          </div>
+
+          <div style={{ background: '#F8F9FA', padding: '15px', borderRadius: '8px', border: '1px solid #E0E0E0', marginBottom: '20px' }}>
+            <h4 style={{ margin: '0 0 12px 0', color: '#37474F' }}>Trình độ hiện tại theo module</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+              {getLearningLevelRows(selectedChild).map(row => (
+                <div key={row.module} style={{ background: '#FFF', padding: '12px', borderRadius: '8px', borderLeft: '4px solid #1976D2' }}>
+                  <div style={{ fontWeight: 'bold', color: '#263238' }}>{row.module}</div>
+                  <div style={{ color: '#1976D2', fontWeight: 'bold', marginTop: '4px' }}>{row.difficulty}</div>
+                  <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '4px' }}>{row.detail}</div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -628,8 +730,8 @@ export default function AdminDashboard() {
             <h3 style={{ margin: '0 0 15px 0', color: '#E65100' }}>Can thiệp Giáo dục AI 🤖</h3>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', background: '#FFF', borderRadius: '8px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
-                <strong>Chế độ Tự động Khoá/Giảm điểm</strong>
-                <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '0.9rem' }}>Hệ thống tự động phát hiện môn học bé làm quá nhiều (Học lệch) để khoá hoặc giảm thưởng, ép bé chuyển sang môn yếu hơn.</p>
+                <strong>Chế độ Cân bằng học tập mềm</strong>
+                <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '0.9rem' }}>Hệ thống gợi ý module chưa học và có thể giảm thưởng khi một module được lặp quá nhiều. Hệ thống không tự động khóa môn bé yêu thích.</p>
               </div>
               <button 
                 onClick={toggleIntervention}
@@ -707,6 +809,9 @@ export default function AdminDashboard() {
                               {w.svg && <div dangerouslySetInnerHTML={{ __html: w.svg }} />}
                               <div><strong>Bé chọn:</strong> <span style={{ color: '#D32F2F' }}>{w.userAns}</span></div>
                               <div><strong>Đáp án:</strong> <span style={{ color: '#388E3C' }}>{w.correctAns}</span></div>
+                              {w.skill && <div><strong>Kỹ năng:</strong> {w.skill}</div>}
+                              {w.explanation && <div style={{ color: '#555', marginTop: '4px' }}>{w.explanation}</div>}
+                              {w.advice && <div style={{ marginTop: '6px', color: '#5D4037', background: '#FFF8E1', padding: '6px', borderRadius: '5px' }}><strong>Cách sửa:</strong> {w.advice}</div>}
                             </div>
                           ))}
                         </div>

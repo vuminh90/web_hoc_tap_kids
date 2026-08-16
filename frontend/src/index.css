@@ -78,6 +78,131 @@ button:active {
   gap: 15px;
 }
 
+.play-zone { text-align: left; }
+.play-zone-header { display: flex; align-items: center; gap: 24px; margin-bottom: 24px; }
+.play-zone-header h2 { margin: 0 0 8px; }
+.play-balance { color: #00695C; font-size: 1.25rem; }
+.play-balance.empty, .timer-danger, .play-error { color: #C62828; }
+.secondary-button { background: #78909C; box-shadow: 0 6px 0 #455A64; }
+.play-empty { text-align: center; padding: 48px 20px; background: #FFF8E1; border-radius: 18px; }
+.play-empty-icon { font-size: 4rem; }
+.play-section-title { color: #00695C; }
+.game-site-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+.game-site-card { overflow: hidden; border: 2px solid #B2EBF2; border-radius: 18px; background: #fff; box-shadow: 0 6px 14px rgba(0,0,0,.09); }
+.game-site-image { height: 150px; display: grid; place-items: center; background: linear-gradient(135deg, #80DEEA, #FFF59D); background-size: cover; background-position: center; }
+.game-site-image span { font-size: 4rem; }
+.game-site-info { padding: 16px; }
+.game-site-info h3 { margin: 0 0 8px; }
+.game-site-info p { min-height: 42px; color: #607D8B; }
+.game-site-info button { width: 100%; background: #00ACC1; box-shadow: 0 5px 0 #006064; }
+.play-session-shell { position: fixed; inset: 0; z-index: 900; display: grid; grid-template-rows: 68px 1fr; background: #fff; }
+.play-session-bar { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 20px; padding: 8px 18px; color: #fff; background: #263238; font-size: 1.2rem; }
+.play-session-bar button { padding: 9px 18px; background: #EF5350; box-shadow: none; }
+.play-game-frame { width: 100%; height: 100%; border: 0; background: #fff; }
+.play-external-control { display: grid; place-items: center; align-content: center; padding: 30px; text-align: center; background: #E0F7FA; }
+.game-admin-panel { margin-top: 20px; padding: 20px; border: 2px solid #26C6DA; border-radius: 12px; background: #E0F7FA; }
+.play-wallet-admin, .game-admin-actions, .game-site-editor-options { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.play-wallet-admin input { padding: 10px; }
+.admin-help { color: #546E7A; }
+.game-site-editor { margin: 14px 0; padding: 14px; border-radius: 10px; background: #fff; }
+.game-site-editor-main { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-bottom: 10px; }
+.game-site-editor-main input { padding: 10px; border: 1px solid #B0BEC5; border-radius: 6px; }
+.game-site-editor-options label { display: flex; gap: 5px; align-items: center; }
+.danger-button { padding: 8px 14px; margin-left: auto; background: #EF5350; box-shadow: none; }
+.game-admin-actions { margin-top: 12px; }
+.save-button { background: #43A047; box-shadow: 0 5px 0 #2E7D32; }
+.admin-message { padding: 10px; border-radius: 6px; background: #fff; color: #00695C; }
+
+.fair-play-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}
+
+.fair-play-modal {
+  width: min(760px, 100%);
+  min-height: min(620px, calc(100vh - 48px));
+  background: #fff;
+  border: 4px solid #fff;
+  border-radius: 20px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.24);
+  padding: 32px;
+  box-sizing: border-box;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+.fair-play-modal h2 {
+  margin: 0;
+  text-align: center;
+}
+
+.fair-play-content {
+  display: grid;
+  gap: 12px;
+}
+
+.fair-play-rule {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  background: #FFF8E1;
+  border-radius: 10px;
+  border-left: 5px solid #FFB347;
+}
+
+.fair-play-rule span {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #77DD77;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+}
+
+.fair-play-rule p {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.fair-play-question {
+  margin: 0;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #E65100;
+}
+
+.fair-play-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.fair-play-cancel {
+  background-color: #9E9E9E;
+  box-shadow: 0px 6px 0px #616161;
+}
+
+.fair-play-confirm {
+  background-color: #4CAF50;
+  box-shadow: 0px 6px 0px #2E7D32;
+}
+
 /* Mobile Adjustments */
 @media (max-width: 600px) {
   .card {
@@ -100,6 +225,42 @@ button:active {
 
   /* Force 1 column on very small screens for better touch targets */
   .grid-2-col {
+    grid-template-columns: 1fr;
+  }
+
+  .play-zone-header { align-items: stretch; flex-direction: column; }
+  .game-site-editor-main { grid-template-columns: 1fr; }
+  .play-session-bar { grid-template-columns: 1fr auto; font-size: 1rem; }
+  .play-session-bar button { grid-column: 1 / -1; }
+
+  .fair-play-overlay {
+    padding: 10px;
+    align-items: flex-start;
+  }
+
+  .fair-play-modal {
+    min-height: calc(100vh - 20px);
+    padding: 18px;
+    gap: 12px;
+    border-radius: 15px;
+  }
+
+  .fair-play-rule {
+    grid-template-columns: 26px 1fr;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .fair-play-rule span {
+    width: 26px;
+    height: 26px;
+  }
+
+  .fair-play-rule p {
+    font-size: 1rem;
+  }
+
+  .fair-play-actions {
     grid-template-columns: 1fr;
   }
 }
