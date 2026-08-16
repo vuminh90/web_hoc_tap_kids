@@ -6,11 +6,14 @@ import os
 import platform
 import shutil
 import signal
+import socket
 import subprocess
+import struct
 import sys
 import time
 import urllib.error
 import urllib.request
+import base64
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -78,6 +81,78 @@ def browser_tabs():
 def browser_url():
     pages = [tab for tab in browser_tabs() if tab.get("type") == "page"]
     return pages[0].get("url", "") if pages else ""
+
+
+def websocket_send_json(websocket_url: str, payload: dict):
+    parsed = urlparse(websocket_url)
+    connection = socket.create_connection((parsed.hostname, parsed.port or 80), timeout=2)
+    try:
+        key = base64.b64encode(os.urandom(16)).decode()
+        request = (
+            f"GET {parsed.path}?{parsed.query} HTTP/1.1\r\n"
+            f"Host: {parsed.hostname}:{parsed.port or 80}\r\n"
+            "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+            f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
+        )
+        connection.sendall(request.encode())
+        response = b""
+        while b"\r\n\r\n" not in response:
+            response += connection.recv(4096)
+        if b" 101 " not in response.split(b"\r\n", 1)[0]:
+            return False
+        data = json.dumps(payload).encode()
+        mask = os.urandom(4)
+        length = len(data)
+        header = bytearray([0x81])
+        if length < 126:
+            header.append(0x80 | length)
+        elif length < 65536:
+            header.append(0x80 | 126)
+            header.extend(struct.pack("!H", length))
+        else:
+            header.append(0x80 | 127)
+            header.extend(struct.pack("!Q", length))
+        masked = bytes(value ^ mask[index % 4] for index, value in enumerate(data))
+        connection.sendall(bytes(header) + mask + masked)
+        return True
+    finally:
+        connection.close()
+
+
+def inject_timer(seconds: int, game_name: str):
+    pages = [tab for tab in browser_tabs() if tab.get("type") == "page" and tab.get("webSocketDebuggerUrl")]
+    if not pages:
+        return False
+    deadline = int(time.time() * 1000) + max(0, int(seconds)) * 1000
+    script = f"""
+(() => {{
+  const id = 'kids-kiosk-countdown';
+  let timer = document.getElementById(id);
+  if (!timer) {{
+    timer = document.createElement('div');
+    timer.id = id;
+    timer.setAttribute('role', 'timer');
+    timer.style.cssText = 'position:fixed;top:14px;right:18px;z-index:2147483647;padding:12px 18px;border-radius:16px;background:#263238;color:white;font:700 22px Arial,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.38);border:3px solid #80DEEA;pointer-events:none;';
+    document.documentElement.appendChild(timer);
+  }}
+  timer.dataset.deadline = '{deadline}';
+  timer.dataset.game = {json.dumps(game_name)};
+  const render = () => {{
+    const left = Math.max(0, Math.ceil((Number(timer.dataset.deadline) - Date.now()) / 1000));
+    const minutes = Math.floor(left / 60);
+    const secs = String(left % 60).padStart(2, '0');
+    timer.textContent = `⏱ ${{minutes}}:${{secs}}`;
+    timer.style.background = left <= 60 ? '#C62828' : '#263238';
+  }};
+  render();
+  if (!window.__kidsKioskTimerInterval) window.__kidsKioskTimerInterval = setInterval(render, 250);
+}})();
+"""
+    return websocket_send_json(pages[0]["webSocketDebuggerUrl"], {
+        "id": int(time.time() * 1000) % 1000000,
+        "method": "Runtime.evaluate",
+        "params": {"expression": script},
+    })
 
 
 def host_allowed(current_url: str, game_url: str):
@@ -161,7 +236,7 @@ def main():
             except OSError:
                 active = None
             if active:
-                _, _, site = active
+                _, wallet, site = active
                 target = site["url"]
                 last_had_game = True
                 if not browser.running():
@@ -171,6 +246,8 @@ def main():
                     if current and not host_allowed(current, target):
                         browser.close()
                         browser.launch(target)
+                    elif current:
+                        inject_timer(wallet.get("balanceSeconds", 0), site.get("name", "Game"))
             else:
                 target = f"{APP_ORIGIN}/play/locked?kiosk=1" if last_had_game else f"{APP_ORIGIN}/?kiosk=1"
                 if last_had_game or not browser.running():
