@@ -1,8 +1,11 @@
-"""Windows kiosk watchdog for the kids learning portal (stdlib only)."""
+"""Cross-platform kiosk watchdog for the kids learning portal (stdlib only)."""
 from __future__ import annotations
 
 import json
 import os
+import platform
+import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -11,29 +14,37 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-APP_ORIGIN = os.getenv("KIDS_APP_ORIGIN", "http://127.0.0.1:3000")
-API_ORIGIN = os.getenv("KIDS_API_ORIGIN", "http://127.0.0.1:8000")
-DEBUG_PORT = 9222
+APP_ORIGIN = os.getenv("KIDS_APP_ORIGIN", "http://127.0.0.1:3000").rstrip("/")
+API_ORIGIN = os.getenv("KIDS_API_ORIGIN", APP_ORIGIN).rstrip("/")
+DEBUG_PORT = int(os.getenv("KIDS_KIOSK_DEBUG_PORT", "9222"))
 STUDENTS = ("vuanhduc", "vuanhthu")
 POLL_SECONDS = 2
-PROFILE_DIR = Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "KidsLearningKiosk"
+IS_WINDOWS = platform.system() == "Windows"
+PROFILE_ROOT = os.getenv("LOCALAPPDATA") if IS_WINDOWS else os.getenv("XDG_STATE_HOME")
+PROFILE_DIR = Path(PROFILE_ROOT or (Path.home() / ".local/state")) / "KidsLearningKiosk"
 
 
-def find_edge() -> Path:
-    candidates = [
-        Path(os.getenv("PROGRAMFILES(X86)", "")) / "Microsoft/Edge/Application/msedge.exe",
-        Path(os.getenv("PROGRAMFILES", "")) / "Microsoft/Edge/Application/msedge.exe",
-        Path(os.getenv("LOCALAPPDATA", "")) / "Microsoft/Edge/Application/msedge.exe",
-    ]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-    raise FileNotFoundError("Không tìm thấy Microsoft Edge.")
+def find_browser() -> Path:
+    if IS_WINDOWS:
+        candidates = [
+            Path(os.getenv("PROGRAMFILES(X86)", "")) / "Microsoft/Edge/Application/msedge.exe",
+            Path(os.getenv("PROGRAMFILES", "")) / "Microsoft/Edge/Application/msedge.exe",
+            Path(os.getenv("LOCALAPPDATA", "")) / "Microsoft/Edge/Application/msedge.exe",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                return candidate
+    else:
+        for command in ("microsoft-edge", "microsoft-edge-stable", "google-chrome", "chromium", "chromium-browser"):
+            executable = shutil.which(command)
+            if executable:
+                return Path(executable)
+    raise FileNotFoundError("Không tìm thấy Microsoft Edge, Google Chrome hoặc Chromium.")
 
 
 def api_get(path: str, student: str):
     request = urllib.request.Request(f"{API_ORIGIN}{path}", headers={"X-Student": student})
-    with urllib.request.urlopen(request, timeout=3) as response:
+    with urllib.request.urlopen(request, timeout=5) as response:
         return json.load(response)
 
 
@@ -49,7 +60,7 @@ def active_game():
     return None
 
 
-def edge_tabs():
+def browser_tabs():
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{DEBUG_PORT}/json", timeout=1) as response:
             return json.load(response)
@@ -58,14 +69,15 @@ def edge_tabs():
 
 
 def browser_url():
-    pages = [tab for tab in edge_tabs() if tab.get("type") == "page"]
+    pages = [tab for tab in browser_tabs() if tab.get("type") == "page"]
     return pages[0].get("url", "") if pages else ""
 
 
 def host_allowed(current_url: str, game_url: str):
     current = urlparse(current_url)
     game = urlparse(game_url)
-    if current.hostname in {"127.0.0.1", "localhost"}:
+    app_host = urlparse(APP_ORIGIN).hostname
+    if current.hostname in {"127.0.0.1", "localhost", app_host}:
         return True
     if not current.hostname or not game.hostname:
         return False
@@ -74,22 +86,23 @@ def host_allowed(current_url: str, game_url: str):
 
 class KioskBrowser:
     def __init__(self):
-        self.edge = find_edge()
+        self.browser = find_browser()
         self.process = None
 
     def launch(self, url: str):
         PROFILE_DIR.mkdir(parents=True, exist_ok=True)
         args = [
-            str(self.edge),
-            f"--kiosk={url}",
-            "--edge-kiosk-type=fullscreen",
-            "--no-first-run",
-            "--disable-pinch",
-            "--overscroll-history-navigation=0",
-            f"--remote-debugging-port={DEBUG_PORT}",
+            str(self.browser), "--kiosk", url, "--no-first-run", "--disable-pinch",
+            "--overscroll-history-navigation=0", f"--remote-debugging-port={DEBUG_PORT}",
             f"--user-data-dir={PROFILE_DIR}",
         ]
-        self.process = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        if IS_WINDOWS:
+            args.insert(3, "--edge-kiosk-type=fullscreen")
+            self.process = subprocess.Popen(args, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+        else:
+            if hasattr(os, "geteuid") and os.geteuid() == 0:
+                args.append("--no-sandbox")
+            self.process = subprocess.Popen(args, start_new_session=True)
 
     def running(self):
         return self.process is not None and self.process.poll() is None
@@ -97,15 +110,27 @@ class KioskBrowser:
     def close(self):
         if not self.process:
             return
-        subprocess.run(["taskkill", "/PID", str(self.process.pid), "/T", "/F"], capture_output=True)
+        if IS_WINDOWS:
+            subprocess.run(["taskkill", "/PID", str(self.process.pid), "/T", "/F"], capture_output=True)
+        else:
+            try:
+                os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+                self.process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            except ProcessLookupError:
+                pass
         self.process = None
 
 
 def wait_for_server():
     for _ in range(60):
         try:
-            urllib.request.urlopen(f"{APP_ORIGIN}/", timeout=1).close()
-            urllib.request.urlopen(f"{API_ORIGIN}/", timeout=1).close()
+            urllib.request.urlopen(f"{APP_ORIGIN}/", timeout=2).close()
+            urllib.request.urlopen(f"{API_ORIGIN}/", timeout=2).close()
             return
         except OSError:
             time.sleep(1)
@@ -122,7 +147,6 @@ def main():
                 active = active_game()
             except OSError:
                 active = None
-
             if active:
                 _, _, site = active
                 target = site["url"]
