@@ -22,6 +22,11 @@ POLL_SECONDS = 2
 IS_WINDOWS = platform.system() == "Windows"
 PROFILE_ROOT = os.getenv("LOCALAPPDATA") if IS_WINDOWS else os.getenv("XDG_STATE_HOME")
 PROFILE_DIR = Path(PROFILE_ROOT or (Path.home() / ".local/state")) / "KidsLearningKiosk"
+HTTP_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+    "Accept": "application/json,text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+}
 
 
 def find_browser() -> Path:
@@ -43,7 +48,9 @@ def find_browser() -> Path:
 
 
 def api_get(path: str, student: str):
-    request = urllib.request.Request(f"{API_ORIGIN}{path}", headers={"X-Student": student})
+    request = urllib.request.Request(
+        f"{API_ORIGIN}{path}", headers={**HTTP_HEADERS, "X-Student": student}
+    )
     with urllib.request.urlopen(request, timeout=5) as response:
         return json.load(response)
 
@@ -127,14 +134,20 @@ class KioskBrowser:
 
 
 def wait_for_server():
+    print(f"Connecting to {APP_ORIGIN} ...", flush=True)
+    last_error = None
     for _ in range(60):
         try:
-            urllib.request.urlopen(f"{APP_ORIGIN}/", timeout=2).close()
-            urllib.request.urlopen(f"{API_ORIGIN}/", timeout=2).close()
+            app_request = urllib.request.Request(f"{APP_ORIGIN}/", headers=HTTP_HEADERS)
+            api_request = urllib.request.Request(f"{API_ORIGIN}/", headers=HTTP_HEADERS)
+            urllib.request.urlopen(app_request, timeout=5).close()
+            urllib.request.urlopen(api_request, timeout=5).close()
+            print("Portal is reachable. Starting kiosk browser.", flush=True)
             return
-        except OSError:
+        except OSError as error:
+            last_error = error
             time.sleep(1)
-    raise RuntimeError("Frontend hoặc backend chưa khởi động.")
+    raise RuntimeError(f"Không kết nối được portal sau 60 giây: {last_error}")
 
 
 def main():
