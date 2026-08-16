@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { syncToServer } from '../sync';
+import FairPlayReminder from './FairPlayReminder';
 
 const GRADE3_VIETNAMESE = [
   { id: 'grammar', name: 'Ngữ pháp (Từ vựng, Câu)', icon: '📝' },
@@ -16,8 +17,117 @@ const PREP_VIETNAMESE = [
 const GRADE3_PASSAGES = [
   "Mùa xuân đã về. Trăm hoa đua nở. Bầu trời trong xanh và không khí thật ấm áp.",
   "Mỗi buổi sáng em đều thức dậy sớm để tập thể dục và ăn sáng trước khi đi học.",
-  "Trường học của em rất đẹp. Sân trường có nhiều cây xanh toả bóng mát rượi."
+  "Trường học của em rất đẹp. Sân trường có nhiều cây xanh toả bóng mát rượi.",
+  "Sáng sớm, khu vườn nhà An rất yên tĩnh. Trên cành cây xoài, một chú sẻ nhỏ đang tập bay. Chú vỗ đôi cánh bé xíu rồi nhảy từ cành này sang cành khác. Bỗng nhiên, chú trượt chân và rơi xuống bãi cỏ. An nhìn thấy liền chạy lại. Em nhẹ nhàng đặt chú sẻ vào một chiếc hộp nhỏ có lót khăn mềm. Một lát sau, chú sẻ tỉnh lại. An mở hộp, đưa chú ra gần gốc cây. Chú sẻ vỗ cánh bay lên cành xoài. Nó hót líu lo như muốn cảm ơn An. Từ đó, mỗi sáng An đều nghe tiếng chim hót trong vườn. Em cảm thấy rất vui vì đã giúp được một người bạn nhỏ."
 ];
+
+const GRADE3_READING_SEEDS = [
+  { who: "An", place: "khu vườn", friend: "chú sẻ nhỏ", action: "nhặt chiếc lá khô để làm dấu trang", lesson: "biết yêu thiên nhiên", object: "chiếc hộp giấy", detail: "tiếng chim hót líu lo" },
+  { who: "Bình", place: "thư viện trường", friend: "bạn Mai", action: "tìm một quyển truyện về lòng dũng cảm", lesson: "biết giữ sách sạch đẹp", object: "thẻ mượn sách", detail: "mùi giấy mới thơm nhẹ" },
+  { who: "Chi", place: "sân trường", friend: "em lớp Một", action: "nhặt quả bóng lăn xa", lesson: "biết giúp đỡ người nhỏ hơn", object: "quả bóng xanh", detail: "hàng cây rì rào trong gió" },
+  { who: "Dũng", place: "lớp học", friend: "cô giáo", action: "xếp lại góc đọc sách", lesson: "biết làm việc ngăn nắp", object: "giá sách nhỏ", detail: "ánh nắng rơi trên bảng" },
+  { who: "Hà", place: "bên bờ ao", friend: "ông nội", action: "quan sát đàn cá bơi", lesson: "biết kiên nhẫn quan sát", object: "cuốn sổ tay", detail: "mặt nước lăn tăn" },
+  { who: "Khánh", place: "con đường làng", friend: "bác đưa thư", action: "nhặt phong thư rơi", lesson: "biết trả lại của rơi", object: "chiếc phong bì", detail: "tiếng xe đạp leng keng" },
+  { who: "Lan", place: "vườn rau", friend: "mẹ", action: "tưới nước cho luống cải", lesson: "biết chăm lao động", object: "bình tưới nhỏ", detail: "những giọt nước long lanh" },
+  { who: "Minh", place: "phòng học mỹ thuật", friend: "bạn Nam", action: "chia sẻ hộp màu", lesson: "biết chia sẻ với bạn", object: "hộp màu sáp", detail: "bức tranh rực rỡ" },
+  { who: "Ngọc", place: "nhà văn hóa", friend: "các bạn trong tổ", action: "tập kể chuyện trước lớp", lesson: "biết tự tin hơn", object: "tờ giấy ghi ý", detail: "tiếng vỗ tay nhẹ nhàng" },
+  { who: "Phúc", place: "bếp nhỏ", friend: "bà ngoại", action: "rửa rau giúp bà", lesson: "biết phụ giúp gia đình", object: "rổ rau xanh", detail: "mùi canh thơm ấm" },
+  { who: "Quân", place: "công viên", friend: "bố", action: "nhặt rác bỏ vào thùng", lesson: "biết giữ nơi công cộng sạch sẽ", object: "túi giấy", detail: "bãi cỏ xanh mướt" },
+  { who: "Vy", place: "góc học tập", friend: "chị gái", action: "luyện đọc một bài thơ", lesson: "biết đọc chậm và rõ", object: "quyển Tiếng Việt", detail: "chiếc đèn bàn sáng dịu" }
+];
+
+const LEVEL_CONFIG = {
+  easy: { name: "Dễ", min: 50, max: 90, target: 70 },
+  medium: { name: "Trung bình", min: 90, max: 150, target: 120 },
+  hard: { name: "Khó", min: 150, max: 260, target: 200 },
+  special: { name: "Đặc biệt", min: 260, max: 500, target: 340 }
+};
+
+const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
+
+const getReadingLevelKey = (currentLevel) => {
+  const keys = ["easy", "medium", "hard", "special"];
+  return keys[Math.min(Math.max(currentLevel - 1, 0), keys.length - 1)];
+};
+
+const countWords = (text) =>
+  text
+    .replace(/[.,!?;:()"]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .length;
+
+const buildPassageText = (seed, levelKey, index) => {
+  const intro = `${seed.who} là học sinh lớp Ba. Một buổi sáng, ${seed.who} đến ${seed.place} và nhìn thấy ${seed.detail}. Bạn cảm thấy rất vui nên muốn làm một việc thật có ích.`;
+  const body = `${seed.who} gặp ${seed.friend}. Hai người cùng ${seed.action}. Lúc đầu, công việc hơi lúng túng, nhưng ${seed.who} bình tĩnh lắng nghe, làm từng bước và không bỏ cuộc.`;
+  const close = `Sau đó, ${seed.who} cất ${seed.object} đúng chỗ. Mọi người khen bạn chăm chỉ. Qua câu chuyện, ${seed.who} hiểu rằng mỗi việc nhỏ đều giúp mình ${seed.lesson}.`;
+  const extra = [
+    `Trên đường về, ${seed.who} kể lại mọi chuyện cho gia đình nghe. Bạn nói rõ điều mình đã thấy, việc mình đã làm và cảm xúc của mình sau buổi học.`,
+    `Ngày hôm sau, ${seed.who} tiếp tục luyện đọc đoạn văn này. Bạn chú ý dừng ở dấu phẩy, nghỉ lâu hơn ở dấu chấm và đọc các tiếng khó thật rõ ràng.`,
+    `Cô giáo nhắc cả lớp rằng đọc hay không chỉ là đọc nhanh. Người đọc cần hiểu nội dung, biết nhấn giọng ở chi tiết quan trọng và trả lời được câu hỏi sau khi đọc.`,
+    `${seed.who} ghi vào sổ tay ba điều cần nhớ: đọc đúng từng từ, giữ giọng vừa phải và kể lại được nhân vật, nơi chốn, việc làm trong câu chuyện.`,
+    `Từ trải nghiệm ấy, ${seed.who} tự tin hơn trong giờ Tập đọc. Bạn cũng động viên các bạn khác luyện đọc mỗi ngày để tiến bộ từng chút một.`
+  ];
+  const config = LEVEL_CONFIG[levelKey];
+  let text = [intro, body, close].join(" ");
+  let extraIndex = index % extra.length;
+  while (countWords(text) < config.min) {
+    text += ` ${extra[extraIndex % extra.length]}`;
+    extraIndex += 1;
+  }
+  return text;
+};
+
+const makeReadingQuestions = (seed) => ([
+  {
+    q: `Nhân vật chính trong đoạn văn là ai?`,
+    a: seed.who,
+    options: shuffle([seed.who, seed.friend, "cô hiệu trưởng", "bác bảo vệ"])
+  },
+  {
+    q: `Câu chuyện diễn ra ở đâu?`,
+    a: seed.place,
+    options: shuffle([seed.place, "bến xe", "siêu thị", "sân vận động"])
+  },
+  {
+    q: `${seed.who} đã làm việc gì?`,
+    a: seed.action,
+    options: shuffle([seed.action, "ngủ quên trong lớp", "làm mất sách của bạn", "chạy ra ngoài trời mưa"])
+  },
+  {
+    q: `Đồ vật nào được nhắc đến trong bài?`,
+    a: seed.object,
+    options: shuffle([seed.object, "chiếc đồng hồ đỏ", "cặp kính đen", "lọ mực tím"])
+  },
+  {
+    q: `Bài đọc muốn nhắc bé điều gì?`,
+    a: seed.lesson,
+    options: shuffle([seed.lesson, "nên vội vàng khi đọc", "không cần giúp ai", "chỉ làm việc khi có phần thưởng"])
+  }
+]);
+
+const makeGrade3ReadingLibrary = () => {
+  const levels = Object.keys(LEVEL_CONFIG);
+  const library = [];
+  levels.forEach((levelKey) => {
+    for (let i = 0; i < 50; i++) {
+      const seed = GRADE3_READING_SEEDS[(i + levels.indexOf(levelKey) * 3) % GRADE3_READING_SEEDS.length];
+      library.push({
+        id: `${levelKey}-${i + 1}`,
+        level: levelKey,
+        levelName: LEVEL_CONFIG[levelKey].name,
+        title: `Bài đọc ${LEVEL_CONFIG[levelKey].name} ${i + 1}: ${seed.who} làm việc tốt`,
+        text: buildPassageText(seed, levelKey, i),
+        questions: makeReadingQuestions(seed)
+      });
+    }
+  });
+  return library;
+};
+
+const GRADE3_READING_LIBRARY = makeGrade3ReadingLibrary();
 
 const PREP_READING_LEVELS = ['easy', 'medium', 'hard', 'special'];
 
@@ -192,6 +302,7 @@ const PREP_ANIMALS = [
 
 const DIFFICULTY_LEVELS = ["dễ", "trung bình", "cao", "đặc biệt"];
 const MIN_ANSWER_TIME_MS = 2000;
+const RANDOM_CLICK_TIME_MS = 3000;
 
 const getQuizBasePoints = (correct) => {
   if (correct <= 4) return 0;
@@ -203,9 +314,312 @@ const getQuizBasePoints = (correct) => {
 };
 
 const getFastAnswerMultiplier = (fastAnswers) => {
-  if (fastAnswers >= 6) return 0;
-  if (fastAnswers >= 3) return 0.5;
+  if (fastAnswers >= 3) return 0;
+  if (fastAnswers >= 1) return 0.5;
   return 1;
+};
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const readJsonMap = (key) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const VIET_LEVEL_NAMES = [
+  'Mới bắt đầu',
+  'Rất dễ',
+  'Dễ',
+  'Dễ+',
+  'Trung bình',
+  'Trung bình+',
+  'Khó',
+  'Khó+',
+  'Rất khó',
+  'Thử thách'
+];
+
+const getVietnameseLevelName = (level) => VIET_LEVEL_NAMES[clamp(level, 1, 10) - 1];
+const getVietnameseMaxTime = (catId, level, isAdvancedStudent) => {
+  if (catId === 'grammar') return clamp((isAdvancedStudent ? 260 : 420) - ((level - 1) * (isAdvancedStudent ? 12 : 18)), 120, isAdvancedStudent ? 260 : 420);
+  if (catId === 'writing') return 0;
+  return 120;
+};
+
+const GRAMMAR_WORD_BANK = {
+  nouns: ['cái bàn', 'quyển sách', 'bông hoa', 'con mèo', 'sân trường', 'dòng sông', 'chiếc cặp', 'ngôi nhà', 'cô giáo', 'bạn Nam', 'cây bàng', 'tiếng trống'],
+  verbs: ['chạy', 'đọc', 'viết', 'nhảy', 'hát', 'vẽ', 'giúp đỡ', 'quan sát', 'chăm sóc', 'sắp xếp', 'lắng nghe', 'tưới cây'],
+  adjectives: ['xanh biếc', 'chăm chỉ', 'hiền lành', 'rộng rãi', 'sạch sẽ', 'ấm áp', 'nhanh nhẹn', 'rực rỡ', 'gọn gàng', 'vui vẻ', 'yên tĩnh', 'cao lớn'],
+  synonyms: [
+    ['chăm chỉ', 'cần cù', 'lười biếng', 'ồn ào', 'vội vàng'],
+    ['dũng cảm', 'gan dạ', 'nhút nhát', 'buồn bã', 'lạnh lẽo'],
+    ['vui vẻ', 'hớn hở', 'tức giận', 'sạch sẽ', 'cao lớn'],
+    ['giúp đỡ', 'hỗ trợ', 'trách móc', 'ngủ quên', 'trốn tránh'],
+    ['yên tĩnh', 'tĩnh lặng', 'náo nhiệt', 'rực rỡ', 'gọn gàng']
+  ],
+  antonyms: [
+    ['cao', 'thấp', 'rộng', 'xanh', 'đẹp'],
+    ['nhanh', 'chậm', 'sáng', 'vui', 'gần'],
+    ['sạch', 'bẩn', 'mới', 'ngoan', 'ấm'],
+    ['dũng cảm', 'nhút nhát', 'thật thà', 'hiền hậu', 'chăm chỉ'],
+    ['ồn ào', 'yên tĩnh', 'vội vàng', 'rực rỡ', 'ấm áp']
+  ],
+  misspellings: [
+    ['sắp xếp', 'sắp sếp', 'sáp xếp', 'sắp xếp'],
+    ['xuất sắc', 'suất sắc', 'xuất xắc', 'xuất sắc'],
+    ['bổ sung', 'bổ xung', 'bỗ sung', 'bổ sung'],
+    ['chân thành', 'trân thành', 'chân thàn', 'chân thành'],
+    ['lãng mạn', 'lãn mạn', 'lãng mạng', 'lãng mạn'],
+    ['xinh xắn', 'xinh xẻo', 'sinh xắn', 'xinh xắn']
+  ]
+};
+
+const createGrammarQuestionByPattern = (level, index) => {
+  const pattern = index % 10;
+  const noun = GRAMMAR_WORD_BANK.nouns[(index + level) % GRAMMAR_WORD_BANK.nouns.length];
+  const verb = GRAMMAR_WORD_BANK.verbs[(index * 2 + level) % GRAMMAR_WORD_BANK.verbs.length];
+  const adj = GRAMMAR_WORD_BANK.adjectives[(index * 3 + level) % GRAMMAR_WORD_BANK.adjectives.length];
+
+  if (pattern === 0) {
+    const answerType = ['Danh từ', 'Động từ', 'Tính từ'][index % 3];
+    const ans = answerType === 'Danh từ' ? noun : (answerType === 'Động từ' ? verb : adj);
+    return {
+      q: `Từ nào dưới đây là ${answerType.toLowerCase()}?`,
+      ans,
+      opts: [ans, noun, verb, adj].filter((item, pos, arr) => arr.indexOf(item) === pos).slice(0, 4),
+      skill: 'Từ loại',
+      explanation: `${answerType} là nhóm từ bé cần nhận biết trong câu.`
+    };
+  }
+  if (pattern === 1) {
+    const pair = GRAMMAR_WORD_BANK.synonyms[index % GRAMMAR_WORD_BANK.synonyms.length];
+    return {
+      q: `Từ nào đồng nghĩa với "${pair[0]}"?`,
+      ans: pair[1],
+      opts: [pair[1], pair[2], pair[3], pair[4]],
+      skill: 'Từ đồng nghĩa',
+      explanation: `"${pair[1]}" gần nghĩa với "${pair[0]}".`
+    };
+  }
+  if (pattern === 2) {
+    const pair = GRAMMAR_WORD_BANK.antonyms[index % GRAMMAR_WORD_BANK.antonyms.length];
+    return {
+      q: `Từ nào trái nghĩa với "${pair[0]}"?`,
+      ans: pair[1],
+      opts: [pair[1], pair[2], pair[3], pair[4]],
+      skill: 'Từ trái nghĩa',
+      explanation: `"${pair[1]}" có nghĩa ngược với "${pair[0]}".`
+    };
+  }
+  if (pattern === 3) {
+    const sentence = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} đang ${verb} trong sân.`;
+    return {
+      q: `Trong câu "${sentence}", bộ phận nào trả lời cho câu hỏi "làm gì?"`,
+      ans: `đang ${verb}`,
+      opts: [`đang ${verb}`, noun, 'trong sân', 'câu này không có hoạt động'],
+      skill: 'Bộ phận câu',
+      explanation: `Bộ phận "đang ${verb}" nói hoạt động của sự vật.`
+    };
+  }
+  if (pattern === 4) {
+    const sentence = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} thật ${adj}.`;
+    return {
+      q: `Câu "${sentence}" thuộc kiểu câu nào?`,
+      ans: 'Ai thế nào?',
+      opts: ['Ai thế nào?', 'Ai làm gì?', 'Ai là gì?', 'Câu hỏi'],
+      skill: 'Kiểu câu',
+      explanation: `Câu này nêu đặc điểm "${adj}" nên thuộc kiểu Ai thế nào.`
+    };
+  }
+  if (pattern === 5) {
+    const choices = [
+      { q: 'Lan ơi, cho mình mượn bút nhé', ans: '?' },
+      { q: 'Ôi bông hoa này đẹp quá', ans: '!' },
+      { q: 'Sáng nay em đi học rất sớm', ans: '.' },
+      { q: 'Bạn đã làm xong bài chưa', ans: '?' }
+    ];
+    const selected = choices[index % choices.length];
+    return {
+      q: `Cần đặt dấu câu nào ở cuối câu: "${selected.q}"`,
+      ans: selected.ans,
+      opts: [selected.ans, '.', '?', '!'].filter((item, pos, arr) => arr.indexOf(item) === pos),
+      skill: 'Dấu câu',
+      explanation: 'Dấu câu cuối câu giúp người đọc hiểu mục đích của câu.'
+    };
+  }
+  if (pattern === 6) {
+    const item = GRAMMAR_WORD_BANK.misspellings[index % GRAMMAR_WORD_BANK.misspellings.length];
+    return {
+      q: `Từ nào viết đúng chính tả?`,
+      ans: item[0],
+      opts: [item[0], item[1], item[2], 'không có từ đúng'],
+      skill: 'Chính tả',
+      explanation: `Từ đúng là "${item[0]}".`
+    };
+  }
+  if (pattern === 7) {
+    const ans = `Vì trời mưa, em mang áo mưa.`;
+    return {
+      q: 'Câu nào dùng từ nối hợp lý?',
+      ans,
+      opts: [ans, 'Nhưng trời mưa, em mang áo mưa.', 'Và trời mưa, em mang áo mưa.', 'Hoặc trời mưa, em mang áo mưa.'],
+      skill: 'Từ nối',
+      explanation: '"Vì" nêu nguyên nhân, phù hợp với việc trời mưa.'
+    };
+  }
+  if (pattern === 8) {
+    const ans = `${noun.charAt(0).toUpperCase()}${noun.slice(1)} ${verb} rất ${adj}.`;
+    return {
+      q: 'Sắp xếp các từ thành câu có nghĩa.',
+      ans,
+      opts: [ans, `${verb} ${noun} rất ${adj}.`, `Rất ${noun} ${verb} ${adj}.`, `${adj} rất ${verb} ${noun}.`],
+      skill: 'Sắp xếp câu',
+      explanation: 'Câu đúng cần có sự vật, hoạt động hoặc đặc điểm theo trật tự rõ nghĩa.'
+    };
+  }
+
+  const simile = level >= 6;
+  return simile
+    ? {
+        q: `Câu nào có hình ảnh so sánh?`,
+        ans: 'Mặt hồ sáng như chiếc gương lớn.',
+        opts: ['Mặt hồ sáng như chiếc gương lớn.', 'Mặt hồ rất rộng.', 'Mặt hồ có nhiều cá.', 'Mặt hồ ở cuối làng.'],
+        skill: 'So sánh',
+        explanation: 'Từ "như" thường báo hiệu hình ảnh so sánh.'
+      }
+    : {
+        q: `Chọn câu rõ nghĩa nhất.`,
+        ans: `${noun.charAt(0).toUpperCase()}${noun.slice(1)} đang ${verb}.`,
+        opts: [`${noun.charAt(0).toUpperCase()}${noun.slice(1)} đang ${verb}.`, `Đang ${verb} ${adj}.`, `${adj} đang cái.`, `${verb} trong rất.`],
+        skill: 'Câu rõ nghĩa',
+        explanation: 'Câu rõ nghĩa cần đủ ý và sắp xếp tự nhiên.'
+      };
+};
+
+const GRADE3_GRAMMAR_BANK = Array.from({ length: 10 }, (_, levelIndex) => {
+  const grammarLevel = levelIndex + 1;
+  return Array.from({ length: 120 }, (_, questionIndex) => ({
+    ...createGrammarQuestionByPattern(grammarLevel, questionIndex),
+    level: grammarLevel,
+    key: `grammar-${grammarLevel}-${questionIndex + 1}`
+  }));
+}).flat();
+
+const WRITING_TYPES = [
+  'Viết câu',
+  'Viết 3-5 câu',
+  'Tả đồ vật',
+  'Tả con vật',
+  'Tả người',
+  'Kể việc tốt',
+  'Viết lời nhắn',
+  'Đoạn văn có yêu cầu'
+];
+
+const WRITING_SUBJECTS = [
+  { name: 'chiếc cặp sách', words: ['cặp', 'sách', 'ngăn', 'màu', 'giữ gìn'], type: 'Tả đồ vật' },
+  { name: 'quyển vở em thích', words: ['vở', 'trang', 'bìa', 'viết', 'sạch'], type: 'Tả đồ vật' },
+  { name: 'con mèo nhà em', words: ['mèo', 'lông', 'mắt', 'chạy', 'yêu'], type: 'Tả con vật' },
+  { name: 'con chó trung thành', words: ['chó', 'đuôi', 'sủa', 'canh', 'thân'], type: 'Tả con vật' },
+  { name: 'mẹ của em', words: ['mẹ', 'dịu dàng', 'nấu', 'chăm sóc', 'yêu'], type: 'Tả người' },
+  { name: 'người bạn thân', words: ['bạn', 'giúp', 'vui', 'học', 'chơi'], type: 'Tả người' },
+  { name: 'một lần giúp đỡ gia đình', words: ['giúp', 'nhà', 'vui', 'mẹ', 'việc'], type: 'Kể việc tốt' },
+  { name: 'một việc tốt ở trường', words: ['trường', 'bạn', 'giúp', 'cô', 'vui'], type: 'Kể việc tốt' }
+];
+
+const createWritingTask = (level) => {
+  const normalizedLevel = clamp(level, 1, 10);
+  const minSentences = normalizedLevel <= 2 ? 2 : (normalizedLevel <= 5 ? 4 : (normalizedLevel <= 8 ? 6 : 8));
+  const minWords = normalizedLevel <= 2 ? 18 : (normalizedLevel <= 5 ? 35 : (normalizedLevel <= 8 ? 55 : 80));
+  const subject = WRITING_SUBJECTS[(normalizedLevel * 3 + Date.now()) % WRITING_SUBJECTS.length];
+  const type = normalizedLevel <= 1 ? 'Viết câu' : (normalizedLevel <= 2 ? 'Viết 3-5 câu' : subject.type);
+  const needsEmotion = normalizedLevel >= 4;
+  const needsConnector = normalizedLevel >= 6;
+  const needsComparison = normalizedLevel >= 8;
+  const hints = [
+    `Mở đầu: giới thiệu ${subject.name}.`,
+    `Thân đoạn: viết 2-3 chi tiết cụ thể.`,
+    needsEmotion ? 'Viết thêm cảm xúc hoặc suy nghĩ của em.' : 'Kết thúc bằng một câu ngắn gọn.',
+    needsConnector ? 'Dùng ít nhất một từ nối: vì, nên, sau đó, cuối cùng.' : '',
+    needsComparison ? 'Thử dùng một câu so sánh có từ "như".' : ''
+  ].filter(Boolean);
+
+  return {
+    type,
+    level: normalizedLevel,
+    levelName: getVietnameseLevelName(normalizedLevel),
+    topic: `Viết đoạn văn về ${subject.name}.`,
+    prompt: `${type}: Em hãy viết ít nhất ${minSentences} câu về ${subject.name}.`,
+    minSentences,
+    minWords,
+    keywords: subject.words,
+    needsEmotion,
+    needsConnector,
+    needsComparison,
+    hints,
+    rewardMax: 10 + normalizedLevel
+  };
+};
+
+const countVietnameseSentences = (text) => text.split(/[.!?。！？]+/).map(s => s.trim()).filter(Boolean).length;
+const normalizeVietnameseText = (text) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const evaluateWriting = (text, task) => {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const sentenceCount = countVietnameseSentences(text);
+  const normalizedText = normalizeVietnameseText(text);
+  const matchedKeywords = task.keywords.filter(word => normalizedText.includes(normalizeVietnameseText(word.split(' ')[0])));
+  const hasEmotion = ['vui', 'yêu', 'thích', 'tự hào', 'biết ơn', 'hạnh phúc', 'ấm áp'].some(word => normalizedText.includes(normalizeVietnameseText(word)));
+  const hasConnector = ['vì', 'nên', 'sau đó', 'cuối cùng', 'trước tiên', 'ngoài ra'].some(word => normalizedText.includes(normalizeVietnameseText(word)));
+  const hasComparison = normalizedText.includes(' nhu ') || normalizedText.includes(' nhu la ');
+  const punctuationCount = (text.match(/[.!?]/g) || []).length;
+
+  const rubric = [
+    { name: 'Đúng chủ đề', score: matchedKeywords.length > 0 ? 2 : 0, max: 2 },
+    { name: 'Đủ độ dài', score: words.length >= task.minWords && sentenceCount >= task.minSentences ? 2 : (words.length >= Math.ceil(task.minWords * 0.65) ? 1 : 0), max: 2 },
+    { name: 'Có chi tiết cụ thể', score: matchedKeywords.length >= 3 ? 2 : (matchedKeywords.length >= 2 ? 1 : 0), max: 2 },
+    { name: 'Câu rõ nghĩa', score: sentenceCount >= task.minSentences ? 2 : 1, max: 2 },
+    { name: 'Dấu câu', score: punctuationCount >= Math.max(1, task.minSentences - 1) ? 1 : 0, max: 1 },
+    { name: 'Cảm xúc/từ nối/câu hay', score: ((task.needsEmotion ? hasEmotion : true) && (task.needsConnector ? hasConnector : true) && (task.needsComparison ? hasComparison : true)) ? 1 : 0, max: 1 }
+  ];
+  const score = rubric.reduce((sum, item) => sum + item.score, 0);
+  const weakSkills = rubric.filter(item => item.score < item.max).map(item => item.name);
+  return {
+    score,
+    wordCount: words.length,
+    sentenceCount,
+    matchedKeywords,
+    hasEmotion,
+    hasConnector,
+    hasComparison,
+    rubric,
+    weakSkills
+  };
+};
+
+const getVietnameseMistakeAdvice = (wrongItem = {}, catId = 'grammar') => {
+  const skill = wrongItem.skill || '';
+  if (skill.includes('Từ loại')) return 'Cách sửa: hỏi từ này gọi tên sự vật, hoạt động hay đặc điểm. Sau đó đặt từ vào một câu ngắn để kiểm tra.';
+  if (skill.includes('đồng nghĩa') || skill.includes('trái nghĩa')) return 'Cách sửa: đọc nghĩa của từ trong câu, rồi thử thay bằng đáp án. Nếu câu vẫn gần nghĩa là đồng nghĩa, nếu ngược nghĩa là trái nghĩa.';
+  if (skill.includes('Dấu câu')) return 'Cách sửa: đọc câu thành tiếng. Câu hỏi dùng dấu hỏi, câu bộc lộ cảm xúc dùng dấu chấm than, câu kể dùng dấu chấm.';
+  if (skill.includes('Chính tả')) return 'Cách sửa: chép lại từ đúng 3 lần, đọc chậm từng âm đầu và vần dễ nhầm trước khi chọn.';
+  if (skill.includes('Sắp xếp') || skill.includes('Câu rõ nghĩa')) return 'Cách sửa: tìm ai/cái gì trước, rồi tìm làm gì hoặc thế nào, cuối cùng đọc lại xem câu có tự nhiên không.';
+  if (skill.includes('Từ nối')) return 'Cách sửa: xác định quan hệ giữa hai ý: nguyên nhân dùng "vì/nên", trình tự dùng "sau đó/cuối cùng".';
+  if (skill.includes('So sánh')) return 'Cách sửa: tìm hai sự vật được đặt cạnh nhau và từ báo hiệu như "như", "tựa", "giống".';
+  if (catId === 'reading') return 'Cách sửa: quay lại đoạn đọc, tìm câu chứa thông tin liên quan rồi gạch chân từ khóa trước khi trả lời.';
+  if (catId === 'prep_riddle') return 'Cách sửa: đọc từng gợi ý, loại bỏ đáp án không khớp, chỉ chọn khi tất cả gợi ý đều đúng.';
+  return wrongItem.explanation || 'Cách sửa: đọc lại câu hỏi, tìm từ khóa quan trọng, so sánh từng đáp án rồi chọn đáp án phù hợp nhất.';
+};
+
+const getWritingRubricAdvice = (rubricName) => {
+  if (rubricName === 'Đúng chủ đề') return 'Đọc lại đề và nhắc tên sự vật/sự việc chính ngay từ câu đầu.';
+  if (rubricName === 'Đủ độ dài') return 'Viết thêm 1-2 câu giải thích hoặc kể thêm một chi tiết cụ thể.';
+  if (rubricName === 'Có chi tiết cụ thể') return 'Thêm màu sắc, hình dáng, hoạt động, thời gian, nơi chốn hoặc cảm xúc.';
+  if (rubricName === 'Câu rõ nghĩa') return 'Mỗi câu nên có đủ ai/cái gì và làm gì/thế nào; đọc thành tiếng để phát hiện câu cụt.';
+  if (rubricName === 'Dấu câu') return 'Sau mỗi ý trọn vẹn, đặt dấu chấm. Câu cảm xúc có thể dùng dấu chấm than.';
+  if (rubricName === 'Cảm xúc/từ nối/câu hay') return 'Thêm từ nối như "sau đó", "vì vậy" hoặc một câu cảm xúc như "Em rất yêu...".';
+  return 'Đọc lại bài, sửa từng câu ngắn trước rồi mới viết dài hơn.';
 };
 
 const QUESTION_VARIANTS = {
@@ -335,8 +749,6 @@ const PREP_RIDDLES = (() => {
   return DIFFICULTY_LEVELS.flatMap((difficulty) => byDifficulty[difficulty].slice(0, 500));
 })();
 
-const shuffle = (items) => [...items].sort(() => Math.random() - 0.5);
-
 const buildPrepQuizRound = (currentLevel) => {
   const currentDifficulty = DIFFICULTY_LEVELS[Math.min(Math.max(currentLevel - 1, 0), DIFFICULTY_LEVELS.length - 1)];
   const byDifficulty = DIFFICULTY_LEVELS.reduce((acc, difficulty) => {
@@ -357,6 +769,9 @@ export default function ReadingTest() {
   const isGrade3 = currentUser === 'vuanhduc';
 
   const [level, setLevel] = useState(parseInt(localStorage.getItem(`vietLevel_${currentUser}`) || '1', 10));
+  const moduleLevelKey = `vietnameseModuleLevels_${currentUser}`;
+  const [moduleLevels, setModuleLevels] = useState(() => readJsonMap(moduleLevelKey));
+  const [activeModuleLevel, setActiveModuleLevel] = useState(1);
 
   const [screen, setScreen] = useState('hub');
   const [category, setCategory] = useState(null);
@@ -365,10 +780,12 @@ export default function ReadingTest() {
   
   const [stats, setStats] = useState({ correct: 0, incorrect: 0, startTime: null });
   const [wrongAnswers, setWrongAnswers] = useState([]);
+  const [fairPlayReminder, setFairPlayReminder] = useState(null);
 
   const [grammarIndex, setGrammarIndex] = useState(0);
   const [grammarQ, setGrammarQ] = useState(null);
   const [writingTopic, setWritingTopic] = useState('');
+  const [writingTask, setWritingTask] = useState(null);
   const [writingContent, setWritingContent] = useState('');
   const [prepQuizIndex, setPrepQuizIndex] = useState(0);
   const [prepQuizQ, setPrepQuizQ] = useState(null);
@@ -376,6 +793,9 @@ export default function ReadingTest() {
   const [canAnswer, setCanAnswer] = useState(false);
 
   const [targetText, setTargetText] = useState("");
+  const [currentPassage, setCurrentPassage] = useState(null);
+  const [readingAnswers, setReadingAnswers] = useState({});
+  const [readingSubmitted, setReadingSubmitted] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [scoreData, setScoreData] = useState(null);
@@ -389,6 +809,9 @@ export default function ReadingTest() {
   const answerDelayRef = useRef(null);
   const questionStartedAtRef = useRef(null);
   const fastAnswerCountRef = useRef(0);
+  const readingQuestionStartedAtRef = useRef(null);
+  const readingFastAnswerCountRef = useRef(0);
+  const readingTimedQuestionsRef = useRef(new Set());
 
   const beginAnswerDelay = () => {
     clearTimeout(answerDelayRef.current);
@@ -399,11 +822,24 @@ export default function ReadingTest() {
 
   const recordAnswerTiming = () => {
     const elapsedMs = Date.now() - (questionStartedAtRef.current || Date.now());
-    const wasFast = elapsedMs < MIN_ANSWER_TIME_MS;
+    const wasFast = elapsedMs < RANDOM_CLICK_TIME_MS;
     if (wasFast) {
       fastAnswerCountRef.current += 1;
     }
     return wasFast;
+  };
+
+  const getModuleLevel = (moduleId) => clamp(parseInt(moduleLevels[moduleId] || '1', 10), 1, 10);
+
+  const saveModuleLevel = (moduleId, nextLevel) => {
+    const normalized = clamp(nextLevel, 1, 10);
+    const nextLevels = { ...moduleLevels, [moduleId]: normalized };
+    setModuleLevels(nextLevels);
+    localStorage.setItem(moduleLevelKey, JSON.stringify(nextLevels));
+    if (moduleId === 'grammar' || moduleId === 'writing') {
+      localStorage.setItem(`vietLevel_${currentUser}`, normalized.toString());
+    }
+    return normalized;
   };
 
   // --- INTERVENTION ENGINE ---
@@ -445,11 +881,7 @@ export default function ReadingTest() {
         
         if (data.plays > 0 && data.plays === maxPlays && data.plays >= 2) {
           if (acc >= 0.8 || (k !== 'grammar' && acc > 0.5)) { // reading/writing is easier to pass
-            if (data.plays >= 4) {
-               newInterventions[k] = 'locked'; 
-            } else {
-               newInterventions[k] = 'nerfed'; 
-            }
+            if (data.plays >= 4) newInterventions[k] = 'nerfed';
           }
         } else if (data.plays === 0 && maxPlays >= 2) {
           newInterventions[k] = 'boosted'; 
@@ -461,14 +893,12 @@ export default function ReadingTest() {
 
   // --- COUNTDOWN EFFECT ---
   useEffect(() => {
-    if ((screen === 'grammar' || (screen === 'reading' && (isRecording || category === 'prep_riddle'))) && timeLeft > 0) {
+    if ((screen === 'grammar' || (screen === 'reading' && isRecording)) && timeLeft > 0) {
       timerRef.current = setTimeout(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
       return () => clearTimeout(timerRef.current);
     } else if (screen === 'grammar' && timeLeft === 0) {
-      finishGrammar(stats, wrongAnswers, true);
-    } else if (screen === 'reading' && category === 'prep_riddle' && timeLeft === 0) {
       finishGrammar(stats, wrongAnswers, true);
     } else if (screen === 'reading' && isRecording && timeLeft === 0) {
       if (recognitionRef.current) {
@@ -633,19 +1063,27 @@ export default function ReadingTest() {
     let qObj;
     let attempts = 0;
     let foundUnique = false;
+    const normalizedLevel = clamp(currentLevel, 1, 10);
+    const levelPool = GRADE3_GRAMMAR_BANK.filter(q => q.level === normalizedLevel);
 
     while (!foundUnique && attempts < 20) {
-      qObj = generateProceduralGrammar(currentLevel);
-      if (!usedQuestions.has(qObj.q)) {
+      const pool = levelPool.length ? levelPool : GRADE3_GRAMMAR_BANK;
+      qObj = pool[Math.floor(Math.random() * pool.length)];
+      if (!usedQuestions.has(qObj.key)) {
         foundUnique = true;
         const newUsed = new Set(usedQuestions);
-        newUsed.add(qObj.q);
+        newUsed.add(qObj.key);
         setUsedQuestions(newUsed);
       }
       attempts++;
     }
 
-    const shuffledOpts = [...qObj.opts].sort(() => Math.random() - 0.5);
+    const fallbackOpts = ['Danh từ', 'Động từ', 'Tính từ', 'Dấu chấm', 'Dấu hỏi', 'Câu kể', 'Câu hỏi'];
+    const completeOpts = [...new Set(qObj.opts)];
+    fallbackOpts.forEach(opt => {
+      if (completeOpts.length < 4 && !completeOpts.includes(opt) && opt !== qObj.ans) completeOpts.push(opt);
+    });
+    const shuffledOpts = completeOpts.slice(0, 4).sort(() => Math.random() - 0.5);
     setGrammarQ({ ...qObj, opts: shuffledOpts });
     beginAnswerDelay();
   };
@@ -675,15 +1113,19 @@ export default function ReadingTest() {
     const statsKey = `learningStats_${currentUser}`;
     const learningHistory = JSON.parse(localStorage.getItem(statsKey) || '[]');
     learningHistory.unshift({
+      schemaVersion: 2,
+      sessionId: globalThis.crypto?.randomUUID?.() || `viet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       date: new Date().toISOString(),
       subject: 'reading',
       category: category,
       timeSpentSec: timeSpentSec,
       points: finalPoints,
+      levelUpMsg,
       wrongDetails: wrongDetails,
+      validForAssessment: !specificStats.randomClicking,
       ...specificStats
     });
-    if (learningHistory.length > 50) learningHistory.length = 50;
+    if (learningHistory.length > 1000) learningHistory.length = 1000;
     localStorage.setItem(statsKey, JSON.stringify(learningHistory));
 
     const pointKey = `points_${currentUser}`;
@@ -707,45 +1149,73 @@ export default function ReadingTest() {
     if (multiplier === 2) interventionMsg = "Tuyệt vời! Bạn nhận được x2 Điểm Khuyến khích!\n";
     interventionMsg += behaviorMsg;
 
-    setStats({ ...stats, finalPoints, timeSpentSec, interventionMsg, levelUpMsg });
+    setStats({ ...stats, ...specificStats, finalPoints, timeSpentSec, interventionMsg, levelUpMsg });
     setWrongAnswers(wrongDetails);
     syncToServer(currentUser);
     setScreen('result');
   };
 
-  const startGame = (catId) => {
+  const startGame = (catId, skipReminder = false) => {
+    const moduleLevel = (catId === 'grammar' || catId === 'writing') ? getModuleLevel(catId) : level;
+    const previewTime = catId === 'grammar'
+      ? getVietnameseMaxTime('grammar', moduleLevel, isGrade3)
+      : ((isGrade3 && catId === 'reading') ? Math.max(90, Math.ceil(80 / 70 * 60)) : null);
+    const previewReward = catId === 'writing'
+      ? `tối đa khoảng ${createWritingTask(moduleLevel).rewardMax} 💎 theo chất lượng bài viết`
+      : `tối đa khoảng ${catId === 'reading' ? 10 : 12} 💎 nếu làm tốt`;
+    if ((catId === 'grammar' || catId === 'prep_riddle' || catId === 'writing' || (isGrade3 && catId === 'reading')) && !skipReminder) {
+      setFairPlayReminder({
+        timeSec: previewTime,
+        timeText: catId === 'writing'
+          ? 'không giới hạn, bé viết xong rồi nộp'
+          : (catId === 'prep_riddle' ? 'không tính thời gian' : undefined),
+        rewardText: previewReward,
+        hideSpeedRules: catId === 'prep_riddle',
+        onConfirm: () => startGame(catId, true)
+      });
+      return;
+    }
     setCategory(catId);
     setStats({ correct: 0, incorrect: 0, startTime: Date.now() });
     setUsedQuestions(new Set());
     setWrongAnswers([]);
     fastAnswerCountRef.current = 0;
+    readingFastAnswerCountRef.current = 0;
+    readingQuestionStartedAtRef.current = null;
+    readingTimedQuestionsRef.current = new Set();
     setCanAnswer(false);
 
     if (catId === 'grammar') {
+      const grammarLevel = getModuleLevel('grammar');
+      setActiveModuleLevel(grammarLevel);
       setScreen('grammar');
       setGrammarIndex(0);
-      const baseTime = isGrade3 ? 120 : 90;
-      const timeDecay = isGrade3 ? 5 : 2;
-      let calculatedMaxTime = baseTime - ((level - 1) * timeDecay);
-      if (calculatedMaxTime < 30) calculatedMaxTime = 30; // Min time 30s
+      const calculatedMaxTime = getVietnameseMaxTime('grammar', grammarLevel, isGrade3);
       setMaxTime(calculatedMaxTime);
       setTimeLeft(calculatedMaxTime);
-      generateUniqueGrammar(level);
+      generateUniqueGrammar(grammarLevel);
     } else if (catId === 'writing') {
+      const writingLevel = getModuleLevel('writing');
+      const task = createWritingTask(writingLevel);
+      setActiveModuleLevel(writingLevel);
       setScreen('writing');
-      setWritingTopic(getWritingTopic());
+      setWritingTask(task);
+      setWritingTopic(task.prompt);
       setWritingContent('');
     } else {
       setScreen('reading');
       setTargetText('');
+      setCurrentPassage(null);
+      setReadingAnswers({});
+      setReadingSubmitted(false);
       setTranscript("");
       setScoreData(null);
       if (catId === 'prep_riddle') {
         const round = buildPrepQuizRound(level);
         setPrepQuizIndex(0);
         setPrepQuizQueue(round);
-        setMaxTime(120);
-        setTimeLeft(120);
+        setMaxTime(0);
+        setTimeLeft(0);
         setPrepQuestion(round[0]);
       } else if (catId === 'prep_passage') {
         setTargetText(getPrepPassage(level));
@@ -753,8 +1223,13 @@ export default function ReadingTest() {
         setMaxTime(calculatedTime);
         setTimeLeft(calculatedTime);
       } else {
-        let calculatedTime = 30;
-        calculatedTime = Math.max(30, 90 - (level * 10)); 
+        const levelKey = getReadingLevelKey(level);
+        const passages = GRADE3_READING_LIBRARY.filter((item) => item.level === levelKey);
+        const passage = passages[Math.floor(Math.random() * passages.length)];
+        setCurrentPassage(passage);
+        setTargetText(passage.text);
+        const wordCount = countWords(passage.text);
+        const calculatedTime = Math.max(90, Math.ceil((wordCount / 70) * 60));
         setMaxTime(calculatedTime);
         setTimeLeft(calculatedTime);
       }
@@ -763,7 +1238,6 @@ export default function ReadingTest() {
 
   const handlePrepAnswer = (ans) => {
     if (!canAnswer) return;
-    recordAnswerTiming();
     const isCorrect = ans === prepQuizQ.ans;
     const newStats = {
       correct: stats.correct + (isCorrect ? 1 : 0),
@@ -772,7 +1246,15 @@ export default function ReadingTest() {
     };
     const newWrongs = [...wrongAnswers];
     if (!isCorrect) {
-      newWrongs.push({ q: prepQuizQ.q, userAns: ans, correctAns: prepQuizQ.ans });
+      newWrongs.push({
+        q: prepQuizQ.q,
+        userAns: ans,
+        correctAns: prepQuizQ.ans,
+        skill: 'Đọc hiểu gợi ý',
+        errorType: 'comprehension',
+        misconceptionCode: 'vietnamese.prep_riddle.reading_clues',
+        advice: getVietnameseMistakeAdvice({}, 'prep_riddle')
+      });
     }
 
     setStats(newStats);
@@ -797,14 +1279,23 @@ export default function ReadingTest() {
       newStats.correct += 1;
     } else {
       newStats.incorrect += 1;
-      newWrongs.push({ q: grammarQ.q, userAns: ans, correctAns: grammarQ.ans });
+      newWrongs.push({
+        q: grammarQ.q,
+        userAns: ans,
+        correctAns: grammarQ.ans,
+        skill: grammarQ.skill,
+        explanation: grammarQ.explanation,
+        errorType: grammarQ.errorType || 'concept',
+        misconceptionCode: grammarQ.misconceptionCode || `vietnamese.grammar.${String(grammarQ.skill || 'general').toLowerCase().replace(/\s+/g, '_')}`,
+        advice: getVietnameseMistakeAdvice(grammarQ, 'grammar')
+      });
       setWrongAnswers(newWrongs);
     }
     setStats(newStats);
 
     if (grammarIndex + 1 < 10) {
       setGrammarIndex(grammarIndex + 1);
-      generateUniqueGrammar(level);
+      generateUniqueGrammar(activeModuleLevel);
     } else {
       finishGrammar(newStats, newWrongs);
     }
@@ -812,48 +1303,79 @@ export default function ReadingTest() {
 
   const finishGrammar = (finalStats, finalWrongs = [], isTimeout = false) => {
     clearTimeout(timerRef.current);
-    const timeSpentSec = maxTime - timeLeft;
+    const isUntimedPrepRiddle = category === 'prep_riddle';
+    const timeSpentSec = isUntimedPrepRiddle ? 0 : maxTime - timeLeft;
+    const currentModuleLevel = category === 'grammar' ? activeModuleLevel : level;
+    const maxModuleLevel = category === 'grammar' ? 10 : DIFFICULTY_LEVELS.length;
     const fastAnswers = fastAnswerCountRef.current;
     const fastMultiplier = getFastAnswerMultiplier(fastAnswers);
+    const isRandomClicking = fastAnswers >= 3;
+    const weakSkillCounts = finalWrongs.reduce((acc, item) => {
+      const skill = item.skill || 'Ôn tập';
+      acc[skill] = (acc[skill] || 0) + 1;
+      return acc;
+    }, {});
+    const weakSkills = Object.keys(weakSkillCounts).sort((a, b) => weakSkillCounts[b] - weakSkillCounts[a]);
     let earnedPoints = getQuizBasePoints(finalStats.correct);
     let speedBonus = 0;
     
     // Speed Bonus
-    if (finalStats.correct >= 8) {
+    if (!isUntimedPrepRiddle && finalStats.correct >= 8) {
       if (timeLeft > maxTime * 0.5) speedBonus = 5;
       else if (timeLeft > maxTime * 0.2) speedBonus = 2;
     }
     earnedPoints = Math.round((earnedPoints + speedBonus) * fastMultiplier);
 
     // Level Adjustment
-    let newLevel = level;
+    let newLevel = currentModuleLevel;
     let levelMessage = "";
-    if (finalStats.correct >= 8) {
-      newLevel = Math.min(level + 1, DIFFICULTY_LEVELS.length);
-    } else if (finalStats.correct <= 4 && level > 1) {
-      newLevel -= 1;
+    if (finalStats.correct >= 9) {
+      newLevel = Math.min(currentModuleLevel + 1, maxModuleLevel);
+      levelMessage = `Rất tốt! Bé lên ${getVietnameseLevelName(newLevel)}.`;
+    } else if (finalStats.correct >= 7) {
+      levelMessage = `Bé giữ ${getVietnameseLevelName(currentModuleLevel)} để luyện chắc hơn.`;
+    } else if (finalStats.correct <= 4 && currentModuleLevel > 1) {
+      newLevel = Math.max(1, currentModuleLevel - 1);
+      levelMessage = `Mình giảm về ${getVietnameseLevelName(newLevel)} để bé ôn lại nhẹ hơn.`;
     }
     
     if (isTimeout) {
-      levelMessage = "⏰ Hết giờ. Bạn cần cố gắng làm bài nhanh hơn!";
+      levelMessage = "⏰ Hết giờ. Lần sau hệ thống sẽ giữ bài vừa sức để bé làm cẩn thận hơn.";
     }
 
-    if (newLevel !== level) {
+    if (isRandomClicking) {
+      newLevel = currentModuleLevel;
+      levelMessage = `Bé giữ ${getVietnameseLevelName(currentModuleLevel)}. Lượt này có nhiều câu chọn quá nhanh nên không tăng level.`;
+    }
+
+    if (category === 'grammar') {
+      saveModuleLevel('grammar', newLevel);
+    } else if (newLevel !== level) {
       setLevel(newLevel);
       localStorage.setItem(`vietLevel_${currentUser}`, newLevel.toString());
     }
 
     let behaviorMsg = "";
-    if (fastAnswers >= 6) {
-      behaviorMsg = `Bài làm có ${fastAnswers} câu trả lời dưới 2 giây nên chưa được cộng thưởng. Bé hãy đọc kỹ hơn nhé!\n`;
-    } else if (fastAnswers >= 3) {
-      behaviorMsg = `Bài làm có ${fastAnswers} câu trả lời dưới 2 giây nên điểm thưởng giảm 50%.\n`;
+    if (isRandomClicking) {
+      behaviorMsg = `Bài làm có ${fastAnswers} câu chọn dưới 3 giây nên được tính là click bừa: không cộng thưởng và không tăng độ khó.\n`;
+    } else if (fastAnswers > 0) {
+      behaviorMsg = `Bài làm có ${fastAnswers} câu chọn dưới 3 giây nên điểm thưởng giảm 50%.\n`;
     }
 
     saveResults(
       earnedPoints,
       timeSpentSec,
-      { correct: finalStats.correct, incorrect: finalStats.incorrect, fastAnswers },
+      {
+        correct: finalStats.correct,
+        incorrect: finalStats.incorrect,
+        fastAnswers,
+        difficultyLevel: currentModuleLevel,
+        nextDifficultyLevel: newLevel,
+        levelName: getVietnameseLevelName(currentModuleLevel),
+        weakSkills,
+        skillBreakdown: weakSkillCounts,
+        suggestedReview: weakSkills.length ? `Ôn lại: ${weakSkills.slice(0, 2).join(', ')}` : 'Bé làm rất chắc, có thể tăng độ khó.'
+      },
       levelMessage,
       finalWrongs || [],
       behaviorMsg
@@ -861,14 +1383,43 @@ export default function ReadingTest() {
   };
 
   const submitWriting = () => {
-    const wordCount = writingContent.trim().split(/\s+/).filter(w => w.length > 0).length;
-    if (wordCount < 5) {
-      alert('Bài viết quá ngắn. Bé hãy viết dài thêm một chút nữa nhé!');
+    if (!writingTask) return;
+    const result = evaluateWriting(writingContent, writingTask);
+    if (result.wordCount < Math.max(8, Math.floor(writingTask.minWords * 0.45))) {
+      alert('Bài viết còn quá ngắn. Bé hãy viết thêm theo các gợi ý nhé!');
       return;
     }
-    let points = wordCount >= 20 ? 10 : (wordCount >= 10 ? 5 : 2);
+    const points = Math.round((result.score / 10) * writingTask.rewardMax);
     const timeSpentSec = Math.round((Date.now() - stats.startTime) / 1000);
-    saveResults(points, timeSpentSec, { correct: 1, incorrect: 0 });
+    let newLevel = activeModuleLevel;
+    let levelMessage = "";
+    if (result.score >= 8) {
+      newLevel = Math.min(activeModuleLevel + 1, 10);
+      levelMessage = `Bài viết tốt! Bé lên ${getVietnameseLevelName(newLevel)}.`;
+    } else if (result.score >= 6) {
+      levelMessage = `Bé giữ ${getVietnameseLevelName(activeModuleLevel)} để luyện viết chắc hơn.`;
+    } else if (activeModuleLevel > 1) {
+      newLevel = Math.max(1, activeModuleLevel - 1);
+      levelMessage = `Mình giảm về ${getVietnameseLevelName(newLevel)} để đề lần sau có gợi ý dễ hơn.`;
+    } else {
+      levelMessage = 'Bé cứ viết từng câu ngắn, rõ ý trước nhé.';
+    }
+    saveModuleLevel('writing', newLevel);
+    saveResults(points, timeSpentSec, {
+      correct: result.score,
+      incorrect: 10 - result.score,
+      writingScore: result.score,
+      difficultyLevel: activeModuleLevel,
+      nextDifficultyLevel: newLevel,
+      levelName: writingTask.levelName,
+      writingType: writingTask.type,
+      topic: writingTask.topic,
+      wordCount: result.wordCount,
+      sentenceCount: result.sentenceCount,
+      rubric: result.rubric,
+      weakSkills: result.weakSkills,
+      suggestedReview: result.weakSkills.length ? `Bé cần luyện thêm: ${result.weakSkills.slice(0, 2).join(', ')}` : 'Bài viết đủ ý, rõ ràng. Lần sau thử dùng câu hay hơn.'
+    }, levelMessage);
   };
 
   const toggleRecording = () => {
@@ -913,32 +1464,102 @@ export default function ReadingTest() {
 
   const calculateScore = (finalTranscript) => {
     const timeSpentMs = Date.now() - startTimeRef.current;
-    const timeSpentSec = Math.round(timeSpentMs / 1000);
+    const timeSpentSec = Math.max(1, Math.round(timeSpentMs / 1000));
     
-    const targetWords = targetText.toLowerCase().replace(/[.,!?]/g, '').split(' ').filter(w => w);
-    const spokenWords = (finalTranscript || '').toLowerCase().split(' ').filter(w => w);
+    const targetWords = normalizeWords(targetText.toLowerCase());
+    const spokenWords = normalizeWords((finalTranscript || '').toLowerCase());
     
     let correctWords = 0;
     targetWords.forEach(word => {
         if (spokenWords.includes(word)) correctWords++;
     });
     
-    // Phonics Scoring logic: focus on word count matching
+    const wpm = Math.round((spokenWords.length / timeSpentSec) * 60);
     const accuracy = Math.round((correctWords / targetWords.length) * 100);
-    let points = 0;
-    if (accuracy >= 90) points = 10;
-    else if (accuracy >= 70) points = 5;
-    else if (accuracy >= 50) points = 2;
+    const paceScore = wpm >= 70 && wpm <= 140 ? 100 : (wpm >= 50 && wpm <= 170 ? 80 : (wpm >= 35 && wpm <= 190 ? 60 : 40));
+    const completion = Math.min(100, Math.round((spokenWords.length / targetWords.length) * 100));
+    const fluency = Math.round((paceScore * 0.6) + (completion * 0.4));
+    const readingScore = Math.round((accuracy * 0.7) + (fluency * 0.3));
+    const readingPoints = Math.round(readingScore * 0.6 / 10);
 
-    setScoreData({ accuracy, wpm: 0, fluency: 0, points: points, timeSpentSec });
+    setScoreData({
+      accuracy,
+      wpm,
+      fluency,
+      readingScore,
+      readingPoints,
+      comprehensionScore: 0,
+      comprehensionCorrect: 0,
+      points: readingPoints,
+      timeSpentSec
+    });
+    readingQuestionStartedAtRef.current = Date.now();
+  };
+
+  const handleReadingAnswer = (questionIndex, option) => {
+    const elapsedMs = Date.now() - (readingQuestionStartedAtRef.current || Date.now());
+    if (!readingTimedQuestionsRef.current.has(questionIndex) && elapsedMs < RANDOM_CLICK_TIME_MS) {
+      readingFastAnswerCountRef.current += 1;
+    }
+    readingTimedQuestionsRef.current.add(questionIndex);
+    setReadingAnswers({ ...readingAnswers, [questionIndex]: option });
+    readingQuestionStartedAtRef.current = Date.now();
+  };
+
+  const submitReadingAnswers = () => {
+    if (!currentPassage) return;
+    const unanswered = currentPassage.questions.some((_, index) => !readingAnswers[index]);
+    if (unanswered) {
+      alert("Bé hãy trả lời đủ 5 câu hỏi trước khi nộp nhé!");
+      return;
+    }
+
+    const wrongDetails = [];
+    let correct = 0;
+    currentPassage.questions.forEach((question, index) => {
+      const userAns = readingAnswers[index];
+      if (userAns === question.a) {
+        correct += 1;
+      } else {
+        wrongDetails.push({
+          q: question.q,
+          userAns,
+          correctAns: question.a,
+          skill: 'Đọc hiểu và tìm bằng chứng',
+          errorType: 'comprehension',
+          misconceptionCode: 'vietnamese.reading.find_evidence',
+          advice: getVietnameseMistakeAdvice({}, 'reading')
+        });
+      }
+    });
+
+    const comprehensionScore = correct * 20;
+    const comprehensionPoints = correct;
+    const fastAnswers = readingFastAnswerCountRef.current;
+    const fastMultiplier = getFastAnswerMultiplier(fastAnswers);
+    const totalPoints = Math.round(Math.min(10, (scoreData?.readingPoints || 0) + comprehensionPoints) * fastMultiplier);
+    setWrongAnswers(wrongDetails);
+    setReadingSubmitted(true);
+    setScoreData({
+      ...scoreData,
+      comprehensionScore,
+      comprehensionCorrect: correct,
+      comprehensionPoints,
+      points: totalPoints,
+      fastAnswers,
+      randomClicking: fastAnswers >= 3
+    });
   };
 
   const finishReading = () => {
     let newLevel = level;
     let levelMessage = "";
-    if (scoreData.accuracy >= 90) {
+    if (scoreData.randomClicking) {
+      newLevel = level;
+      levelMessage = `Bé giữ cấp ${level}. Phần đọc hiểu có nhiều câu chọn quá nhanh nên không tăng level.`;
+    } else if (scoreData.points >= 9) {
       newLevel = Math.min(level + 1, DIFFICULTY_LEVELS.length);
-    } else if (scoreData.accuracy <= 50 && level > 1) {
+    } else if (scoreData.points <= 4 && level > 1) {
       newLevel -= 1;
     }
 
@@ -950,13 +1571,23 @@ export default function ReadingTest() {
     saveResults(scoreData.points, scoreData.timeSpentSec, { 
       wpm: scoreData.wpm, 
       accuracy: scoreData.accuracy, 
-      fluency: scoreData.fluency 
-    }, levelMessage);
+      fluency: scoreData.fluency,
+      readingScore: scoreData.readingScore,
+      comprehensionScore: scoreData.comprehensionScore,
+      comprehensionCorrect: scoreData.comprehensionCorrect,
+      fastAnswers: scoreData.fastAnswers || 0,
+      randomClicking: scoreData.randomClicking || false,
+      passageId: currentPassage?.id,
+      passageLevel: currentPassage?.level
+    }, levelMessage, wrongAnswers, scoreData.randomClicking
+      ? `Phần đọc hiểu có ${scoreData.fastAnswers} câu chọn dưới 3 giây nên được tính là click bừa: không cộng thưởng và không tăng độ khó.\n`
+      : ((scoreData.fastAnswers || 0) > 0 ? `Phần đọc hiểu có ${scoreData.fastAnswers} câu chọn dưới 3 giây nên điểm thưởng giảm 50%.\n` : ""));
   };
 
   if (screen === 'hub') {
     const categories = isGrade3 ? GRADE3_VIETNAMESE : PREP_VIETNAMESE;
     return (
+      <>
       <div className="card" style={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <h2>Góc Tiếng Việt 📖</h2>
         <h4 style={{ color: '#666', marginBottom: '20px' }}>
@@ -993,6 +1624,16 @@ export default function ReadingTest() {
         </div>
         <button onClick={() => navigate('/student')} style={{ marginTop: '30px', backgroundColor: '#888' }}>Trở lại</button>
       </div>
+      <FairPlayReminder
+        reminder={fairPlayReminder}
+        onCancel={() => setFairPlayReminder(null)}
+        onConfirm={() => {
+          const confirmAction = fairPlayReminder?.onConfirm;
+          setFairPlayReminder(null);
+          confirmAction?.();
+        }}
+      />
+      </>
     );
   }
 
@@ -1007,6 +1648,7 @@ export default function ReadingTest() {
           </div>
         </div>
         <div style={{ fontSize: '1.3rem', margin: '30px 0', padding: '20px', background: '#F1F8E9', borderRadius: '10px' }}>
+          {grammarQ?.skill && <div style={{ fontSize: '0.95rem', color: '#558B2F', fontWeight: 'bold', marginBottom: '10px' }}>{grammarQ.skill}</div>}
           {grammarQ?.q}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1024,8 +1666,19 @@ export default function ReadingTest() {
     return (
       <div className="card">
         <h2 style={{ color: '#2E7D32' }}>Tập Làm Văn ✍️</h2>
-        <div style={{ fontSize: '1.2rem', margin: '20px 0', padding: '15px', background: '#E3F2FD', borderRadius: '10px', fontStyle: 'italic', borderLeft: '4px solid #1976D2' }}>
-          Đề bài: {writingTopic}
+        <div style={{ fontSize: '1.1rem', margin: '20px 0', padding: '15px', background: '#E3F2FD', borderRadius: '10px', borderLeft: '4px solid #1976D2', textAlign: 'left' }}>
+          <div style={{ fontWeight: 'bold', color: '#0D47A1', marginBottom: '8px' }}>
+            {writingTask?.type}
+          </div>
+          <div style={{ fontSize: '1.2rem', fontStyle: 'italic' }}>Đề bài: {writingTopic}</div>
+          {writingTask && (
+            <div style={{ marginTop: '10px', color: '#333' }}>
+              <div>Yêu cầu: ít nhất {writingTask.minSentences} câu, khoảng {writingTask.minWords}+ từ.</div>
+              <ul style={{ margin: '8px 0 0 20px', padding: 0 }}>
+                {writingTask.hints.map((hint) => <li key={hint}>{hint}</li>)}
+              </ul>
+            </div>
+          )}
         </div>
         <textarea 
           value={writingContent}
@@ -1048,9 +1701,6 @@ export default function ReadingTest() {
             <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#E65100' }}>
               Câu {prepQuizIndex + 1}/10
             </div>
-          </div>
-          <div style={{ marginTop: '10px', textAlign: 'right', fontWeight: 'bold', color: timerColor }}>
-            ⏱ {timeLeft}s
           </div>
           <div style={{ fontSize: '1.3rem', margin: '30px 0', padding: '20px', background: '#FFF8E1', borderRadius: '10px', minHeight: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
             {prepQuizQ?.q}
@@ -1078,6 +1728,11 @@ export default function ReadingTest() {
             </div>
           )}
         </div>
+        {currentPassage && (
+          <div style={{ marginTop: '12px', color: '#555', fontWeight: 'bold' }}>
+            Bài đọc · {countWords(currentPassage.text)} từ
+          </div>
+        )}
         <div style={{ padding: '30px', margin: '20px 0', background: '#f5f5f5', borderRadius: '10px', fontSize: '1.5rem', lineHeight: '1.6', fontWeight: 'normal' }}>
           {targetText}
         </div>
@@ -1103,9 +1758,49 @@ export default function ReadingTest() {
                 <div style={{ fontSize: '0.9rem', color: '#888' }}>Tốc độ đọc (WPM)</div>
                 <strong style={{ fontSize: '1.5rem', color: '#2196F3' }}>{scoreData.wpm}</strong>
               </div>
+              <div style={{ background: '#FFF', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.9rem', color: '#888' }}>Trôi chảy</div>
+                <strong style={{ fontSize: '1.5rem', color: '#7B1FA2' }}>{scoreData.fluency}%</strong>
+              </div>
+              <div style={{ background: '#FFF', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.9rem', color: '#888' }}>Đọc hiểu</div>
+                <strong style={{ fontSize: '1.5rem', color: '#E65100' }}>{scoreData.comprehensionCorrect}/5</strong>
+              </div>
             </div>
-            <h2 style={{ textAlign: 'center', color: '#E65100', margin: '20px 0' }}>Thưởng: {scoreData.points} 💎 (Điểm 10)</h2>
-            <button onClick={finishReading} style={{ width: '100%' }}>Nhận Thưởng & Trở về</button>
+            {currentPassage && !readingSubmitted && (
+              <div style={{ background: '#FFF', padding: '15px', borderRadius: '10px', marginTop: '15px' }}>
+                <h3 style={{ marginTop: 0, color: '#2E7D32' }}>Trả lời 5 câu hỏi sau khi đọc</h3>
+                {currentPassage.questions.map((question, qIndex) => (
+                  <div key={question.q} style={{ marginBottom: '16px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Câu {qIndex + 1}: {question.q}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                      {question.options.map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => handleReadingAnswer(qIndex, option)}
+                          style={{
+                            textAlign: 'left',
+                            padding: '10px 12px',
+                            backgroundColor: readingAnswers[qIndex] === option ? '#C8E6C9' : '#F7F7F7',
+                            color: '#333',
+                            border: readingAnswers[qIndex] === option ? '2px solid #4CAF50' : '1px solid #DDD'
+                          }}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button onClick={submitReadingAnswers} style={{ width: '100%', backgroundColor: '#1976D2' }}>Nộp câu trả lời</button>
+              </div>
+            )}
+            {(!currentPassage || readingSubmitted) && (
+              <>
+                <h2 style={{ textAlign: 'center', color: '#E65100', margin: '20px 0' }}>Thưởng: {scoreData.points} 💎 (Điểm 10)</h2>
+                <button onClick={finishReading} style={{ width: '100%' }}>Nhận Thưởng & Trở về</button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -1118,10 +1813,34 @@ export default function ReadingTest() {
         <h2 style={{ color: '#E65100', textAlign: 'center' }}>Kết quả Bài kiểm tra</h2>
         <div style={{ background: '#E8F5E9', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px' }}>
           {category === 'grammar' && <h3>Đạt: {stats.correct}/10 điểm</h3>}
+          {category === 'writing' && <h3>Bài viết: {stats.writingScore}/10 điểm</h3>}
           <p>Thời gian: {stats.timeSpentSec}s</p>
           <p style={{ color: '#4CAF50', fontWeight: 'bold' }}>{stats.interventionMsg}</p>
+          {stats.suggestedReview && <p style={{ color: '#6A1B9A', fontWeight: 'bold' }}>{stats.suggestedReview}</p>}
           <p style={{ color: '#1976D2', fontSize: '1.2rem', fontWeight: 'bold' }}>Tổng thưởng: {stats.finalPoints} 💎</p>
         </div>
+
+        {stats.rubric && (
+          <div style={{ background: '#FFF8E1', padding: '15px', borderRadius: '10px', marginBottom: '20px', textAlign: 'left' }}>
+            <h3 style={{ color: '#E65100', marginTop: 0 }}>Rubric bài viết</h3>
+            {stats.rubric.map(item => (
+              <div key={item.name} style={{ borderBottom: '1px solid #FFE0B2', padding: '8px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{item.name}</span>
+                  <strong>{item.score}/{item.max}</strong>
+                </div>
+                {item.score < item.max && (
+                  <div style={{ marginTop: '5px', color: '#5D4037', background: '#FFF', padding: '6px', borderRadius: '5px' }}>
+                    <strong>Cách sửa:</strong> {getWritingRubricAdvice(item.name)}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div style={{ marginTop: '10px', color: '#555' }}>
+              Số từ: {stats.wordCount} · Số câu: {stats.sentenceCount}
+            </div>
+          </div>
+        )}
 
         {wrongAnswers.length > 0 && (
           <div style={{ background: '#FFEBEE', padding: '15px', borderRadius: '10px', marginBottom: '20px', textAlign: 'left' }}>
@@ -1129,8 +1848,11 @@ export default function ReadingTest() {
             {wrongAnswers.map((w, idx) => (
               <div key={idx} style={{ background: 'white', padding: '10px', borderRadius: '5px', marginBottom: '10px', borderLeft: '4px solid #F44336' }}>
                 <div style={{ marginBottom: '5px' }}><strong>Câu hỏi:</strong> {w.q}</div>
+                {w.skill && <div><strong>Kỹ năng:</strong> {w.skill}</div>}
                 <div style={{ color: '#D32F2F' }}><strong>Bé chọn:</strong> {w.userAns} ❌</div>
                 <div style={{ color: '#388E3C' }}><strong>Đáp án đúng:</strong> {w.correctAns} ✅</div>
+                {w.explanation && <div style={{ color: '#555', marginTop: '5px' }}>{w.explanation}</div>}
+                <div style={{ marginTop: '8px', color: '#5D4037', background: '#FFF8E1', padding: '8px', borderRadius: '6px' }}><strong>Cách sửa:</strong> {w.advice || getVietnameseMistakeAdvice(w, category)}</div>
               </div>
             ))}
           </div>

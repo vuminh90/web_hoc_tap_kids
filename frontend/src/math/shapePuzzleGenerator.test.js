@@ -24,14 +24,14 @@ const collectGeneratedPuzzles = (generator, level, count) => {
   return puzzles;
 };
 
-test('the libraries contain 30 and 100 genuinely different drawings', () => {
+test('the libraries contain 30 prep drawings and at least 100 advanced templates', () => {
   assert.equal(prepTemplateIds.length, 30);
-  assert.equal(grade3TemplateIds.length, 100);
+  assert.ok(grade3TemplateIds.length >= 100);
 
   const prepDrawings = prepTemplateIds.map(templateId => createPuzzleFromTemplate(templateId, 0).svg);
   const grade3Drawings = grade3TemplateIds.map(templateId => createPuzzleFromTemplate(templateId, 0).svg);
   assert.equal(new Set(prepDrawings).size, 30);
-  assert.equal(new Set(grade3Drawings).size, 100);
+  assert.ok(new Set(grade3Drawings).size >= 100);
 });
 
 test('all drawings are seamless across visual variants', () => {
@@ -63,13 +63,11 @@ test('ten-question games do not repeat a drawing family', () => {
   assert.equal(new Set(grade3Puzzles.map(puzzle => puzzle.family)).size, 10);
 });
 
-test('grade 3 density increases with its internal level', () => {
-  const foundation = collectGeneratedPuzzles(createAdvancedShapePuzzle, 1, 25).map(puzzle => puzzle.ans);
-  const master = collectGeneratedPuzzles(createAdvancedShapePuzzle, 5, 25).map(puzzle => puzzle.ans);
-  const foundationAverage = foundation.reduce((sum, answer) => sum + answer, 0) / foundation.length;
-  const masterAverage = master.reduce((sum, answer) => sum + answer, 0) / master.length;
-
-  assert.ok(Math.min(...foundation) > 5);
-  assert.ok(masterAverage > foundationAverage);
-  assert.ok(Math.max(...master) > Math.max(...foundation));
+test('grade 3 shape answers never exceed the current level cap', () => {
+  [5, 6, 20, 100].forEach(level => {
+    const puzzles = collectGeneratedPuzzles(createAdvancedShapePuzzle, level, 25);
+    puzzles.forEach(puzzle => {
+      assert.ok(puzzle.ans <= level, `level ${level} generated answer ${puzzle.ans}`);
+    });
+  });
 });

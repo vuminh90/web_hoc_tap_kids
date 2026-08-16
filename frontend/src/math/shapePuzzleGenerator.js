@@ -443,7 +443,59 @@ const triangleGridCount = order => (
 );
 
 const createGrade3Definitions = () => {
-  const specs = [];
+  const beginnerSpecs = createPrepDefinitions()
+    .filter(item => item.answer >= 3 && item.answer <= 5)
+    .map((item, index) => ({
+      ...item,
+      id: `grade3-beginner-prep-${String(index + 1).padStart(2, '0')}`,
+      profile: 'grade3',
+      skill: `${item.skill} - luyá»‡n nÃ¢ng cao`
+    }));
+  const specs = [
+    ...beginnerSpecs,
+    {
+      id: 'grade3-beginner-rectangle-1x2',
+      target: 'rectangle',
+      answer: rectangleCount(1, 2),
+      skill: 'LÆ°á»›i chá»¯ nháº­t 1 hÃ ng 2 cá»™t',
+      factory: variant => createRectangleGrid(1, 2, false, variant)
+    },
+    {
+      id: 'grade3-beginner-square-1x3',
+      target: 'square',
+      answer: squareCount(1, 3),
+      skill: 'LÆ°á»›i Ã´ vuÃ´ng 1 hÃ ng 3 cá»™t',
+      factory: variant => createRectangleGrid(1, 3, true, variant)
+    },
+    {
+      id: 'grade3-beginner-square-2x2',
+      target: 'square',
+      answer: squareCount(2, 2),
+      skill: 'LÆ°á»›i Ã´ vuÃ´ng 2 hÃ ng 2 cá»™t',
+      factory: variant => createRectangleGrid(2, 2, true, variant)
+    },
+    {
+      id: 'grade3-beginner-rectangle-1x3',
+      target: 'rectangle',
+      answer: rectangleCount(1, 3),
+      skill: 'LÆ°á»›i chá»¯ nháº­t 1 hÃ ng 3 cá»™t',
+      factory: variant => createRectangleGrid(1, 3, false, variant)
+    },
+    {
+      id: 'grade3-beginner-triangle-fan-2',
+      target: 'triangle',
+      answer: 3,
+      skill: 'Tam giÃ¡c quáº¡t 2 pháº§n',
+      factory: variant => createTriangleFan(2, variant)
+    },
+    {
+      id: 'grade3-beginner-triangle-fan-3',
+      target: 'triangle',
+      answer: 6,
+      skill: 'Tam giÃ¡c quáº¡t 3 pháº§n',
+      factory: variant => createTriangleFan(3, variant)
+    }
+  ];
   for (let rows = 2; rows <= 7; rows++) {
     for (let columns = 2; columns <= 8; columns++) {
       specs.push({
@@ -483,7 +535,6 @@ const createGrade3Definitions = () => {
     });
   }
 
-  if (specs.length !== 100) throw new Error(`Expected 100 grade 3 patterns, received ${specs.length}`);
   const stages = ['foundation', 'advanced', 'expert', 'master'];
   return specs
     .sort((first, second) => first.answer - second.answer)
@@ -511,6 +562,8 @@ const getGrade3Stage = (level) => {
   if (level <= 4) return 'expert';
   return 'master';
 };
+
+const getGrade3AnswerLimit = (level) => Math.min(100, Math.max(5, level));
 
 const getAnswer = (geometry, target) => (
   target === 'triangle' ? countTriangles(geometry) : countQuadrilaterals(geometry, target)
@@ -581,8 +634,10 @@ export const createShapePuzzle = (_level, random = Math.random, excludedKeys = n
 };
 
 export const createAdvancedShapePuzzle = (level, random = Math.random, excludedKeys = new Set()) => {
-  const stage = getGrade3Stage(level);
-  const definitions = TEMPLATE_DEFINITIONS.filter(item => item.profile === 'grade3' && item.stage === stage);
+  const answerLimit = getGrade3AnswerLimit(level);
+  const definitions = TEMPLATE_DEFINITIONS
+    .filter(item => item.profile === 'grade3' && item.answer >= 1 && item.answer <= answerLimit)
+    .sort((first, second) => second.answer - first.answer);
   return createBalancedPuzzle(definitions, random, excludedKeys);
 };
 

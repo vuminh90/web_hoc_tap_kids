@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { syncToServer } from '../sync';
+import { addPlayReward, getPlayMinutesFromReward } from '../playApi';
 
 const DEFAULT_REWARDS = [
   { id: 1, name: "Trượt rồi hihi 🤪", color: "#FF5252", probability: 40 },
@@ -17,6 +18,7 @@ export default function RewardShop() {
   const [result, setResult] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [gachaSettings, setGachaSettings] = useState(null);
+  const [playRewardMinutes, setPlayRewardMinutes] = useState(0);
 
   const currentUser = localStorage.getItem('currentUser') || 'vuanhduc';
   const pointKey = `points_${currentUser}`;
@@ -73,6 +75,7 @@ export default function RewardShop() {
 
     setIsSpinning(true);
     setResult(null);
+    setPlayRewardMinutes(0);
 
     let rand = Math.random() * 100;
     let cumulative = 0;
@@ -87,11 +90,19 @@ export default function RewardShop() {
       }
     }
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsSpinning(false);
       setResult(selectedReward);
       
-      if (selectedReward.id !== 1) { 
+      const minutes = getPlayMinutesFromReward(selectedReward);
+      if (minutes > 0) {
+        try {
+          await addPlayReward(minutes, selectedReward.name);
+          setPlayRewardMinutes(minutes);
+        } catch (error) {
+          alert(`Chưa thể cộng thời gian chơi: ${error.message}`);
+        }
+      } else if (selectedReward.id !== 1) {
         let newInv = [...inventory];
         const existingItemIndex = newInv.findIndex(i => i.name === selectedReward.name);
         
@@ -147,6 +158,12 @@ export default function RewardShop() {
           <h1 style={{ color: '#aaa', margin: 0 }}>Nhấn nút để thử vận may!</h1>
         )}
       </div>
+
+      {playRewardMinutes > 0 && (
+        <button onClick={() => navigate('/play')} style={{ width: '100%', marginBottom: 15, backgroundColor: '#00ACC1', boxShadow: '0 6px 0 #006064' }}>
+          🎮 Đã cộng {playRewardMinutes} phút — Đến Khu vui chơi
+        </button>
+      )}
 
       <button 
         onClick={spin} 

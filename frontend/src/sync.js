@@ -8,7 +8,15 @@ const KEYS_TO_SYNC = [
   'inventory',
   'learningStats',
   'mathLevel',
-  'vietLevel'
+  'vietLevel',
+  'mathDifficultyLevels',
+  'mathTimeLevels',
+  'vietnameseModuleLevels',
+  'interventionPlans',
+  'guidedPracticeLogs',
+  'weeklyGoals',
+  'parentNotes',
+  'learningPreferences'
 ];
 
 export const pullFromServer = async (username) => {
