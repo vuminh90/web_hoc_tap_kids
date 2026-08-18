@@ -16,3 +16,8 @@ backend/.env
 .DS_Store
 .vscode/
 *.log
+kiosk_build/
+kiosk_dist/
+kiosk_package/
+KidsKiosk-Setup.zip
+*.spec

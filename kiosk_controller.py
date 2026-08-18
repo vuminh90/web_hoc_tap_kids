@@ -1,6 +1,8 @@
 """Cross-platform kiosk watchdog for the kids learning portal (stdlib only)."""
 from __future__ import annotations
 
+import argparse
+import ctypes
 import json
 import os
 import platform
@@ -23,13 +25,49 @@ DEBUG_PORT = int(os.getenv("KIDS_KIOSK_DEBUG_PORT", "9222"))
 STUDENTS = ("vuanhduc", "vuanhthu")
 POLL_SECONDS = 2
 IS_WINDOWS = platform.system() == "Windows"
-PROFILE_ROOT = os.getenv("LOCALAPPDATA") if IS_WINDOWS else os.getenv("XDG_STATE_HOME")
+PROFILE_ROOT = os.getenv("KIDS_KIOSK_STATE_DIR")
+if not PROFILE_ROOT:
+    PROFILE_ROOT = os.getenv("LOCALAPPDATA") if IS_WINDOWS else os.getenv("XDG_STATE_HOME")
 PROFILE_DIR = Path(PROFILE_ROOT or (Path.home() / ".local/state")) / "KidsLearningKiosk"
 HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
     "Accept": "application/json,text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
 }
+MUTEX_HANDLE = None
+
+
+def configure_origins():
+    global APP_ORIGIN, API_ORIGIN
+    parser = argparse.ArgumentParser(description="Kids game kiosk controller")
+    parser.add_argument("--app-origin", default=APP_ORIGIN)
+    parser.add_argument("--api-origin", default=API_ORIGIN)
+    args = parser.parse_args()
+    APP_ORIGIN = args.app_origin.rstrip("/")
+    API_ORIGIN = args.api_origin.rstrip("/")
+
+
+def log(message: str):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{timestamp}] {message}"
+    try:
+        print(line, flush=True)
+    except (AttributeError, OSError):
+        pass
+    try:
+        PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+        with (PROFILE_DIR / "kiosk.log").open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
+    except OSError:
+        pass
+
+
+def ensure_single_instance():
+    global MUTEX_HANDLE
+    if not IS_WINDOWS:
+        return True
+    MUTEX_HANDLE = ctypes.windll.kernel32.CreateMutexW(None, False, "Local\\KidsLearningKiosk")
+    return ctypes.windll.kernel32.GetLastError() != 183
 
 
 def find_browser() -> Path:
@@ -209,7 +247,7 @@ class KioskBrowser:
 
 
 def wait_for_server():
-    print(f"Connecting to {APP_ORIGIN} ...", flush=True)
+    log(f"Connecting to {APP_ORIGIN} ...")
     last_error = None
     for _ in range(60):
         try:
@@ -217,7 +255,7 @@ def wait_for_server():
             api_request = urllib.request.Request(f"{API_ORIGIN}/", headers=HTTP_HEADERS)
             urllib.request.urlopen(app_request, timeout=5).close()
             urllib.request.urlopen(api_request, timeout=5).close()
-            print("Portal is reachable. Starting kiosk browser.", flush=True)
+            log("Portal is reachable. Starting kiosk browser.")
             return
         except OSError as error:
             last_error = error
@@ -226,8 +264,13 @@ def wait_for_server():
 
 
 def main():
+    configure_origins()
+    if not ensure_single_instance():
+        log("Another KidsKiosk instance is already running.")
+        return 0
     wait_for_server()
     browser = KioskBrowser()
+    log(f"Using browser: {browser.browser}")
     last_had_game = False
     try:
         while True:
@@ -261,4 +304,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as error:
+        log(f"Fatal error: {type(error).__name__}: {error}")
+        raise
