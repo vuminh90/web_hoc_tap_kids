@@ -51,9 +51,11 @@
   - Thay đổi phần thưởng và Tỷ lệ trúng thưởng (%).
   - Cộng/Trừ kim cương thủ công (Kèm ghi chú).
 - **Can thiệp Giáo dục (Interventions):**
-  - **Chống học lệch:** Hệ thống tự động khóa môn học mà bé chơi quá nhiều, hoặc giảm thưởng 50%, ép bé phải học bù môn yếu hơn. Phụ huynh có thể Bật/Tắt tính năng này.
+  - **Chống học lệch:** Hệ thống có thể khóa module theo cấu hình, nhắc đổi module khi học quá nhiều và cộng 10% có giới hạn cho module cần khuyến khích. Không còn giảm 50% hoặc nhân đôi điểm.
 
 ### 5. Ghi chú & Lịch sử Cập nhật Quan trọng
+- **Hệ thống level theo module (schema 4):** Mỗi module có level riêng trong database; Anh Thư tối đa 20, Anh Đức tối đa 50. Level điều khiển cả độ khó và thời gian theo chu kỳ nhỏ, yêu cầu 2/3 lượt đạt chuẩn mới tăng cấp. Schema 4 đánh dấu lần reset toàn bộ level về 1 và chặn thiết bị dùng schema cũ ghi level cũ trở lại. Thiết kế, schema, thuật toán, migration và cách nâng cấp được ghi đầy đủ tại `docs/LEVEL_SYSTEM.md`.
+- **Đề hỗn hợp và điểm theo level:** Đề 10 câu luôn mở đầu bằng câu dễ, sau đó trộn tỷ lệ dễ/trung bình/khó/đặc biệt theo chặng level. Trần kim cương tăng theo level, trắc nghiệm hiệu chỉnh xác suất đoán mò, tốc độ chỉ tính trên toàn bài và cột mốc chỉ thưởng một lần. Chi tiết tại mục 16–19 của `docs/LEVEL_SYSTEM.md`.
 - **Fix lỗi Gray Screen Timeout:** Xử lý lỗi sập giao diện khi hết giờ do thiếu mảng truyền `wrongAnswers` vào hệ thống đánh giá.
 - **Mobile Responsive:** Đã điều chỉnh CSS và Layout toàn bộ các trang (Admin, GameArea, Reading, Shop, Dashboard) để hiển thị mượt mà thành 1 cột trên giao diện Điện thoại/Tablet, tránh lỗi hiển thị lệch nội dung.
 - **Bypass SSL cho Cloudflare:** Tắt `basicSsl` trong Vite, bổ sung `allowedHosts: true` để cho phép chạy qua Tunnel mà không bị chặn, giải quyết bài toán Microphone trên iOS thông qua chứng chỉ HTTPS công cộng.

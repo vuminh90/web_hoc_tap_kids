@@ -415,6 +415,7 @@ const selectDiversePatterns = (kind, factory, targets, limit) => {
     profile: 'prep',
     target: item.target,
     answer: item.answer,
+    complexity: item.complexity,
     skill: item.target === 'triangle'
       ? 'Đếm hình tam giác liền mạch'
       : (item.target === 'square' ? 'Đếm hình vuông liền mạch' : 'Đếm hình chữ nhật liền mạch'),
@@ -628,8 +629,10 @@ const createBalancedPuzzle = (definitions, random, excludedKeys) => {
   return createPuzzleFromTemplate(chosen.id, variant);
 };
 
-export const createShapePuzzle = (_level, random = Math.random, excludedKeys = new Set()) => {
-  const definitions = TEMPLATE_DEFINITIONS.filter(item => item.profile === 'prep');
+export const createShapePuzzle = (level, random = Math.random, excludedKeys = new Set()) => {
+  const difficultyBand = Math.min(4, Math.max(1, Math.ceil((Number(level) || 1) / 2)));
+  const complexityLimit = difficultyBand + 1;
+  const definitions = TEMPLATE_DEFINITIONS.filter(item => item.profile === 'prep' && item.complexity <= complexityLimit);
   return createBalancedPuzzle(definitions, random, excludedKeys);
 };
 
