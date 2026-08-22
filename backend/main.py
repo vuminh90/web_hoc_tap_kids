@@ -8,7 +8,7 @@ import hashlib
 import hmac
 import json
 import os
-import tempfile
+import sqlite3
 import threading
 import time
 import uuid
@@ -59,6 +59,16 @@ class TimeAdjustment(BaseModel):
     minutes: int
     note: str = "Phụ huynh điều chỉnh"
 
+class GachaRewardInput(BaseModel):
+    id: int | str | None = None
+    name: str
+    color: str = "#4CAF50"
+    probability: int
+
+class GachaSettingsInput(BaseModel):
+    costPerSpin: int
+    rewards: list[GachaRewardInput]
+
 def create_parent_token():
     expires_at = int(time.time()) + TOKEN_TTL_SECONDS
     payload = f"parent:{expires_at}"
@@ -100,26 +110,62 @@ def get_users(db: Session = Depends(get_db)):
 from fastapi import Request
 
 DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_store.json")
+DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "learning_app.db")
+APP_STATE_KEY = "main"
 
-def load_data():
+def ensure_app_state_table():
+    with sqlite3.connect(DB_FILE) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+            """
+        )
+        connection.commit()
+
+def read_json_backup():
     if not os.path.exists(DATA_FILE):
         return {}
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         try:
             return json.load(f)
-        except:
+        except json.JSONDecodeError:
             return {}
 
+def load_data():
+    ensure_app_state_table()
+    with sqlite3.connect(DB_FILE) as connection:
+        row = connection.execute(
+            "SELECT value FROM app_state WHERE key = ?",
+            (APP_STATE_KEY,),
+        ).fetchone()
+    if row:
+        try:
+            return json.loads(row[0])
+        except json.JSONDecodeError:
+            return {}
+    data = read_json_backup()
+    save_data(data)
+    return data
+
 def save_data(data):
-    directory = os.path.dirname(DATA_FILE)
-    fd, temporary_path = tempfile.mkstemp(prefix="learning-data-", suffix=".json", dir=directory)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(temporary_path, DATA_FILE)
-    finally:
-        if os.path.exists(temporary_path):
-            os.remove(temporary_path)
+    ensure_app_state_table()
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    with sqlite3.connect(DB_FILE) as connection:
+        connection.execute(
+            """
+            INSERT INTO app_state (key, value, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = excluded.updated_at
+            """,
+            (APP_STATE_KEY, payload, int(time.time())),
+        )
+        connection.commit()
 
 def require_student(x_student: str | None = Header(default=None)):
     if x_student not in PLAY_USERS:
@@ -135,6 +181,26 @@ def get_play_store(data):
     for username in PLAY_USERS:
         play["wallets"].setdefault(username, 0)
     return play
+
+def default_gacha_settings():
+    return {
+        "costPerSpin": 200,
+        "rewards": [
+            {"id": 1, "name": "Trượt rồi hihi 🤪", "color": "#FF5252", "probability": 35},
+            {"id": 2, "name": "20 phút chơi game 🎮", "color": "#00ACC1", "probability": 20},
+            {"id": 3, "name": "5,000 VND 💵", "color": "#4CAF50", "probability": 15},
+            {"id": 4, "name": "Được ăn kem 🍦", "color": "#FF9800", "probability": 15},
+            {"id": 5, "name": "30 phút chơi game 🎮", "color": "#2196F3", "probability": 10},
+            {"id": 6, "name": "20,000 VND 💰", "color": "#9C27B0", "probability": 5},
+        ],
+    }
+
+def get_gacha_settings(data):
+    settings = data.get("_gachaSettings")
+    if not isinstance(settings, dict) or not isinstance(settings.get("rewards"), list):
+        settings = default_gacha_settings()
+        data["_gachaSettings"] = settings
+    return settings
 
 def public_wallet(play, username):
     session = play["sessions"].get(username)
@@ -183,6 +249,14 @@ def get_game_sites(username: str = Depends(require_student)):
     play = get_play_store(data)
     return [site for site in play["sites"] if site.get("enabled", True) and username in site.get("allowed_for", list(PLAY_USERS))]
 
+@app.get("/api/gacha/settings")
+def get_public_gacha_settings():
+    with DATA_LOCK:
+        data = load_data()
+        settings = get_gacha_settings(data)
+        save_data(data)
+        return settings
+
 @app.post("/api/play/sessions/start")
 def start_play_session(payload: PlaySessionStart, username: str = Depends(require_student)):
     with DATA_LOCK:
@@ -226,6 +300,40 @@ def parent_play_data(_: bool = Depends(verify_parent_token)):
         wallets = {username: public_wallet(play, username) for username in PLAY_USERS}
         save_data(data)
         return {"wallets": wallets, "sites": play["sites"], "transactions": play["transactions"][:100]}
+
+@app.get("/api/parent/gacha")
+def parent_gacha_settings(_: bool = Depends(verify_parent_token)):
+    with DATA_LOCK:
+        data = load_data()
+        settings = get_gacha_settings(data)
+        save_data(data)
+        return settings
+
+@app.put("/api/parent/gacha")
+def save_parent_gacha_settings(payload: GachaSettingsInput, _: bool = Depends(verify_parent_token)):
+    if payload.costPerSpin < 0 or payload.costPerSpin > 1000000:
+        raise HTTPException(status_code=400, detail="Giá lượt quay không hợp lệ")
+    if not payload.rewards:
+        raise HTTPException(status_code=400, detail="Phải có ít nhất 1 phần thưởng")
+    total_probability = sum(max(0, int(reward.probability)) for reward in payload.rewards)
+    if total_probability != 100:
+        raise HTTPException(status_code=400, detail=f"Tổng tỷ lệ trúng thưởng phải bằng 100%. Hiện tại là {total_probability}%")
+    cleaned = []
+    for reward in payload.rewards:
+        name = reward.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Tên phần thưởng không được để trống")
+        cleaned.append({
+            "id": reward.id or str(uuid.uuid4()),
+            "name": name,
+            "color": reward.color or "#4CAF50",
+            "probability": max(0, int(reward.probability)),
+        })
+    with DATA_LOCK:
+        data = load_data()
+        data["_gachaSettings"] = {"costPerSpin": int(payload.costPerSpin), "rewards": cleaned}
+        save_data(data)
+        return data["_gachaSettings"]
 
 @app.put("/api/parent/play/sites")
 def save_game_sites(sites: list[GameSiteInput], _: bool = Depends(verify_parent_token)):

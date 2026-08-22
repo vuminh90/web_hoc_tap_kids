@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { syncToServer } from '../sync';
 import { addPlayReward, getPlayMinutesFromReward } from '../playApi';
+import { getGachaSettings } from '../gachaApi';
 
 const DEFAULT_REWARDS = [
-  { id: 1, name: "Trượt rồi hihi 🤪", color: "#FF5252", probability: 40 },
-  { id: 2, name: "10,000 VND 💵", color: "#4CAF50", probability: 20 },
-  { id: 3, name: "30 phút xem TV 📺", color: "#2196F3", probability: 20 },
+  { id: 1, name: "Trượt rồi hihi 🤪", color: "#FF5252", probability: 35 },
+  { id: 2, name: "20 phút chơi game 🎮", color: "#00ACC1", probability: 20 },
+  { id: 3, name: "5,000 VND 💵", color: "#4CAF50", probability: 15 },
   { id: 4, name: "Được ăn kem 🍦", color: "#FF9800", probability: 15 },
-  { id: 5, name: "50,000 VND 💰", color: "#9C27B0", probability: 5 },
+  { id: 5, name: "30 phút chơi game 🎮", color: "#2196F3", probability: 10 },
+  { id: 6, name: "20,000 VND 💰", color: "#9C27B0", probability: 5 },
 ];
 
 export default function RewardShop() {
@@ -39,15 +41,15 @@ export default function RewardShop() {
     }
     setInventory(savedInv);
 
-    const savedSettings = localStorage.getItem('gachaSettings');
-    if (savedSettings) {
-      setGachaSettings(JSON.parse(savedSettings));
-    } else {
-      setGachaSettings({
-        costPerSpin: 200,
-        rewards: DEFAULT_REWARDS
-      });
-    }
+    const fallbackSettings = localStorage.getItem('gachaSettings');
+    setGachaSettings(fallbackSettings ? JSON.parse(fallbackSettings) : {
+      costPerSpin: 200,
+      rewards: DEFAULT_REWARDS
+    });
+    getGachaSettings().then(data => {
+      setGachaSettings(data);
+      localStorage.setItem('gachaSettings', JSON.stringify(data));
+    }).catch(() => {});
   }, [pointKey, invKey]);
 
   const spin = () => {
