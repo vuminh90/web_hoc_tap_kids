@@ -4,15 +4,17 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { pullFromServer, syncToServer } from '../sync';
 import ParentLearningDashboard from './ParentLearningDashboard';
 import GameSiteAdmin from './GameSiteAdmin';
+import { getParentGachaSettings, saveParentGachaSettings } from '../gachaApi';
 
 const DEFAULT_SETTINGS = {
   costPerSpin: 200,
   rewards: [
-    { id: 1, name: "Trượt rồi hihi 🤪", color: "#FF5252", probability: 40 },
-    { id: 2, name: "10,000 VND 💵", color: "#4CAF50", probability: 20 },
-    { id: 3, name: "30 phút xem TV 📺", color: "#2196F3", probability: 20 },
+    { id: 1, name: "Trượt rồi hihi 🤪", color: "#FF5252", probability: 35 },
+    { id: 2, name: "20 phút chơi game 🎮", color: "#00ACC1", probability: 20 },
+    { id: 3, name: "5,000 VND 💵", color: "#4CAF50", probability: 15 },
     { id: 4, name: "Được ăn kem 🍦", color: "#FF9800", probability: 15 },
-    { id: 5, name: "50,000 VND 💰", color: "#9C27B0", probability: 5 },
+    { id: 5, name: "30 phút chơi game 🎮", color: "#2196F3", probability: 10 },
+    { id: 6, name: "20,000 VND 💰", color: "#9C27B0", probability: 5 },
   ]
 };
 
@@ -93,6 +95,7 @@ export default function AdminDashboard() {
   const [ducPoints, setDucPoints] = useState(0);
   const [thuPoints, setThuPoints] = useState(0);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settingsMessage, setSettingsMessage] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [selectedChild, setSelectedChild] = useState('vuanhduc');
@@ -113,7 +116,20 @@ export default function AdminDashboard() {
 
   const loadSyncedParentData = async () => {
     setIsSyncing(true);
-    await Promise.all([pullFromServer('vuanhduc'), pullFromServer('vuanhthu')]);
+    await Promise.all([
+      pullFromServer('vuanhduc'),
+      pullFromServer('vuanhthu'),
+      getParentGachaSettings().then(data => {
+        const localSettings = localStorage.getItem('gachaSettings');
+        if (localSettings) {
+          setSettings(JSON.parse(localSettings));
+          setSettingsMessage('Đang dùng cấu hình vòng quay đã lưu trên máy này. Bấm Lưu Cấu Hình để đưa lên máy chủ.');
+        } else {
+          setSettings(data);
+          localStorage.setItem('gachaSettings', JSON.stringify(data));
+        }
+      }).catch(() => {})
+    ]);
     loadPoints();
     setIsSyncing(false);
   };
@@ -356,14 +372,25 @@ export default function AdminDashboard() {
   }, [selectedChild, reportType, isSyncing]);
 
   // Cài đặt Vòng quay
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     const totalProb = settings.rewards.reduce((acc, r) => acc + r.probability, 0);
     if (totalProb !== 100) {
       alert(`Tổng tỷ lệ trúng thưởng phải đúng bằng 100%. Hiện tại đang là ${totalProb}%`);
       return;
     }
-    localStorage.setItem('gachaSettings', JSON.stringify(settings));
-    alert('Đã lưu cấu hình Vòng Quay thành công!');
+    try {
+      const saved = await saveParentGachaSettings(settings);
+      setSettings(saved);
+      localStorage.setItem('gachaSettings', JSON.stringify(saved));
+      setSettingsMessage('Đã lưu cấu hình vòng quay lên máy chủ.');
+      alert('Đã lưu cấu hình Vòng Quay thành công!');
+      return;
+    } catch (error) {
+      const message = error.message || 'Không thể lưu cấu hình vòng quay.';
+      setSettingsMessage(message);
+      alert(message);
+      return;
+    }
   };
 
   const updateReward = (index, field, value) => {
@@ -601,7 +628,7 @@ export default function AdminDashboard() {
           </div>
 
           <div style={{ background: '#FFF9C4', padding: '20px', borderRadius: '10px', border: '2px dashed #FBC02D' }}>
-            <h3 style={{ marginTop: 0, color: '#F57F17' }}>⚙️ Cấu hình Nền kinh tế (Vòng Quay)</h3>
+            <h3 style={{ marginTop: 0, color: '#F57F17' }}>⚙️ Cấu hình quay thưởng</h3>
             <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
               <label style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Giá lượt quay (💎): </label>
               <input 
@@ -626,6 +653,7 @@ export default function AdminDashboard() {
             ))}
             <button onClick={addReward} style={{ backgroundColor: '#2196F3', padding: '10px', marginTop: '10px', display: 'block' }}>➕ Thêm phần thưởng</button>
             <button onClick={handleSaveSettings} style={{ backgroundColor: '#4CAF50', width: '100%', marginTop: '20px', boxShadow: '0 6px 0 #388E3C' }}>💾 Lưu Cấu Hình</button>
+            {settingsMessage && <div style={{ marginTop: '10px', color: '#00695C', background: '#FFFFFF', padding: '10px', borderRadius: '8px' }}>{settingsMessage}</div>}
           </div>
           <GameSiteAdmin selectedChild={selectedChild} />
         </>
