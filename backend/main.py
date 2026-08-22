@@ -215,6 +215,8 @@ def ensure_learning_level_data(student_data, username):
     }
     if should_reset_levels or not isinstance(student_data.get("learningLevelProgress"), dict):
         student_data["learningLevelProgress"] = {}
+    if not isinstance(student_data.get("learningRewardProgress"), dict):
+        student_data["learningRewardProgress"] = {}
     if should_reset_levels:
         student_data["mathLevel"] = 1
         student_data["vietLevel"] = 1

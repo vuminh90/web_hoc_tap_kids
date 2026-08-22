@@ -307,3 +307,77 @@ python -m py_compile main.py
 ```
 
 Mọi thay đổi thuật toán level phải vượt các kiểm thử này trước khi sử dụng.
+
+## 16. Cấu trúc độ khó trong một đề
+
+Đề trắc nghiệm chuẩn có 10 câu. Tỷ lệ phụ thuộc chặng level:
+
+| Chặng | Dễ | Trung bình | Khó | Đặc biệt |
+|---|---:|---:|---:|---:|
+| Làm quen | 6 | 3 | 1 | 0 |
+| Nền tảng | 4 | 4 | 2 | 0 |
+| Luyện chắc | 3 | 4 | 2 | 1 |
+| Vận dụng | 2 | 3 | 3 | 2 |
+| Thử thách | 1 | 3 | 3 | 3 |
+
+Quy tắc bắt buộc:
+
+- Câu đầu luôn dễ.
+- Chín câu còn lại được xáo trộn.
+- Không có ba câu khó/đặc biệt liên tiếp.
+- Ba câu cuối không được đều là câu khó/đặc biệt.
+- Bộ sinh câu vẫn chống lặp nội dung và xáo trộn vị trí đáp án.
+- Bài đọc hiểu 5 câu dùng tỷ lệ 2 dễ, 2 trung bình, 1 khó; câu đầu dễ.
+
+`quizComposition.js` tạo lịch độ khó. Mỗi tier được quy đổi quanh `contentLevel` hiện tại: dễ thấp hơn hai bước nội dung, trung bình thấp hơn một bước, khó bằng mức nền, đặc biệt cao hơn một bước và luôn bị chặn bởi `contentMax`.
+
+## 17. Công thức kim cương theo level
+
+Level là yếu tố chính xác định trần thưởng, giống nhau giữa các module:
+
+- Anh Thư: level 1 = 10 💎; level 20 = 30 💎.
+- Anh Đức: level 1 = 10 💎; level 50 = 40 💎.
+- Các level giữa hai đầu được nội suy tuyến tính và làm tròn.
+
+Điểm chất lượng bằng `trần level × hệ số`:
+
+| Chất lượng | Hệ số |
+|---|---:|
+| Dưới 50% | 0% |
+| 50–59% | 30% |
+| 60–69% | 50% |
+| 70–79% | 70% |
+| 80–89% | 82% |
+| 90–99% | 92% |
+| 100% | 100% |
+
+Phần cộng thêm:
+
+- Đạt mục tiêu tốc độ toàn bài: khoảng 5–10% trần level; chỉ xét khi đúng thô từ 80%.
+- Tăng level: 20% trần level.
+- Module được khuyến khích: 10% trần level.
+- Cột mốc chỉ nhận một lần: Anh Thư tại 4/8/12/16/20; Anh Đức tại 10/20/30/40/50.
+- Đọc và viết dùng tối đa 3 điểm kỹ năng thay cho thưởng tốc độ trực tiếp.
+
+Module học quá nhiều không còn bị nhân 0,5. Giao diện chỉ nhắc bé đổi module. Cơ chế khuyến khích cũ x2 được thay bằng cộng 10% có giới hạn để tránh lạm phát.
+
+## 18. Chống đoán mò
+
+Trắc nghiệm dùng chất lượng hiệu chỉnh xác suất:
+
+`quality = max(0, (đúng - sai / (số lựa chọn - 1)) / tổng câu)`
+
+Với bốn lựa chọn, kết quả đoán ngẫu nhiên kỳ vọng 25% sẽ cho chất lượng gần 0. Ví dụ 5/10 câu đúng chỉ còn 33% chất lượng và chưa nhận điểm nền. Level vẫn được đánh giá bằng độ chính xác thô để phụ huynh nhìn thấy kết quả thật.
+
+Không dùng thời gian từng lần bấm để trừ điểm. Tốc độ chỉ được xét trên tổng thời gian bài và không thể bù cho độ chính xác thấp.
+
+Lịch sử mỗi lượt lưu thêm `guessCorrectedQuality`, `rewardBreakdown` và `difficultySchedule`. Các cột mốc đã nhận lưu ở `learningRewardProgress_<username>` và được đồng bộ database.
+
+## 19. File và kiểm thử của cơ chế thưởng
+
+- `frontend/src/quizComposition.js`: tỷ lệ và lịch độ khó.
+- `frontend/src/rewardSystem.js`: trần level, hiệu chỉnh đoán mò, bonus và cột mốc.
+- `frontend/src/quizComposition.test.js`: kiểm tra tỷ lệ, câu đầu và chuỗi câu khó.
+- `frontend/src/rewardSystem.test.js`: kiểm tra trần điểm, chống đoán và cột mốc.
+
+Khi hiệu chỉnh kinh tế kim cương, chỉ thay hằng số trong `rewardSystem.js`, chạy lại test và theo dõi phân phối `rewardBreakdown` tối thiểu 20–30 lượt/module trước lần điều chỉnh tiếp theo.

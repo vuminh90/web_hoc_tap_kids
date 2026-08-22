@@ -4,6 +4,8 @@ import { syncToServer } from '../sync';
 import FairPlayReminder from './FairPlayReminder';
 import { getChildMaxLevel, getLevelPhase, getLevelTiming, getModuleContentLevel } from '../learningLevels';
 import { evaluateAdaptiveLevel, getProgressKey, readProgressMap, saveAdaptiveProgress } from '../adaptiveLevel';
+import { buildDifficultySchedule, composeReadingQuestions, getTierContentLevel } from '../quizComposition';
+import { calculateLearningReward, getGuessCorrectedQuality, getLevelRewardCap, getRewardProgressKey, readRewardProgress, saveClaimedMilestone } from '../rewardSystem';
 
 const GRADE3_VIETNAMESE = [
   { id: 'grammar', name: 'Ngữ pháp (Từ vựng, Câu)', icon: '📝' },
@@ -304,15 +306,6 @@ const PREP_ANIMALS = [
 
 const DIFFICULTY_LEVELS = ["dễ", "trung bình", "cao", "đặc biệt"];
 const MIN_ANSWER_TIME_MS = 2000;
-
-const getQuizBasePoints = (correct) => {
-  if (correct <= 4) return 0;
-  if (correct <= 6) return 2;
-  if (correct === 7) return 5;
-  if (correct === 8) return 8;
-  if (correct === 9) return 10;
-  return 12;
-};
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const readJsonMap = (key) => {
@@ -741,18 +734,15 @@ const PREP_RIDDLES = (() => {
   return DIFFICULTY_LEVELS.flatMap((difficulty) => byDifficulty[difficulty].slice(0, 500));
 })();
 
-const buildPrepQuizRound = (currentLevel) => {
-  const currentDifficulty = DIFFICULTY_LEVELS[Math.min(Math.max(currentLevel - 1, 0), DIFFICULTY_LEVELS.length - 1)];
+const buildPrepQuizRound = (currentLevel, schedule = []) => {
   const byDifficulty = DIFFICULTY_LEVELS.reduce((acc, difficulty) => {
     acc[difficulty] = shuffle(PREP_RIDDLES.filter((q) => q.difficulty === difficulty));
     return acc;
   }, {});
-
-  const currentQuestions = byDifficulty[currentDifficulty].slice(0, 10);
-  if (currentQuestions.length >= 10) return currentQuestions;
-
-  const fallback = shuffle(DIFFICULTY_LEVELS.flatMap((difficulty) => byDifficulty[difficulty]));
-  return [...currentQuestions, ...fallback].slice(0, 10);
+  const tierMap = { easy: 'dễ', medium: 'trung bình', hard: 'cao', special: 'đặc biệt' };
+  if (schedule.length) return schedule.map((tier) => ({ ...byDifficulty[tierMap[tier]].shift(), difficultyTier: tier }));
+  const currentDifficulty = DIFFICULTY_LEVELS[Math.min(Math.max(currentLevel - 1, 0), DIFFICULTY_LEVELS.length - 1)];
+  return byDifficulty[currentDifficulty].slice(0, 10);
 };
 
 export default function ReadingTest() {
@@ -775,6 +765,7 @@ export default function ReadingTest() {
   const [fairPlayReminder, setFairPlayReminder] = useState(null);
 
   const [grammarIndex, setGrammarIndex] = useState(0);
+  const [difficultySchedule, setDifficultySchedule] = useState([]);
   const [grammarQ, setGrammarQ] = useState(null);
   const [writingTopic, setWritingTopic] = useState('');
   const [writingTask, setWritingTask] = useState(null);
@@ -1080,12 +1071,20 @@ export default function ReadingTest() {
     return topics[Math.floor(Math.random() * topics.length)];
   };
 
-  const saveResults = (earnedPoints, timeSpentSec, specificStats = {}, levelUpMsg = "", wrongDetails = [], behaviorMsg = "") => {
-    let multiplier = 1;
-    if (interventions[category] === 'nerfed') multiplier = 0.5;
-    if (interventions[category] === 'boosted') multiplier = 2;
+  const calculateAndClaimReward = ({ moduleId = category, level, newLevel, decision, qualityPercent, rawAccuracyPercent, timeSpentSec, targetTimeSec, timed = true, skillBonus = null }) => {
+    const progress = readRewardProgress(currentUser);
+    const claimedMilestones = progress[getRewardProgressKey('vietnamese', moduleId)]?.claimedMilestones || [];
+    const reward = calculateLearningReward({
+      username: currentUser, level, nextLevel: newLevel, levelDecision: decision,
+      qualityPercent, rawAccuracyPercent, timeSpentSec, targetTimeSec, timed, skillBonus,
+      encouraged: interventions[moduleId] === 'boosted', claimedMilestones
+    });
+    if (reward.milestoneLevel) saveClaimedMilestone(currentUser, 'vietnamese', moduleId, reward.milestoneLevel);
+    return reward;
+  };
 
-    const finalPoints = Math.round(earnedPoints * multiplier);
+  const saveResults = (earnedPoints, timeSpentSec, specificStats = {}, levelUpMsg = "", wrongDetails = [], behaviorMsg = "") => {
+    const finalPoints = Math.round(earnedPoints);
 
     const statsKey = `learningStats_${currentUser}`;
     const learningHistory = JSON.parse(localStorage.getItem(statsKey) || '[]');
@@ -1122,8 +1121,8 @@ export default function ReadingTest() {
     }
     
     let interventionMsg = "";
-    if (multiplier === 0.5) interventionMsg = "Phần thưởng môn này đã bị giảm 50% do làm quá nhiều!\n";
-    if (multiplier === 2) interventionMsg = "Tuyệt vời! Bạn nhận được x2 Điểm Khuyến khích!\n";
+    if (interventions[category] === 'nerfed') interventionMsg = "Bé đã luyện module này nhiều; hãy thử đổi module để học cân bằng nhé!\n";
+    if (interventions[category] === 'boosted') interventionMsg = `Module này được khuyến khích (+${specificStats.rewardBreakdown?.encouragementBonus || 0}💎)!\n`;
     interventionMsg += behaviorMsg;
 
     setStats({ ...stats, ...specificStats, finalPoints, timeSpentSec, interventionMsg, levelUpMsg });
@@ -1137,9 +1136,7 @@ export default function ReadingTest() {
     const timing = getLevelTiming(currentUser, 'vietnamese', catId, moduleLevel, catId === 'prep_passage' || catId === 'reading' ? 3 : 10);
     const previewTime = timing.timed ? timing.targetSeconds : null;
     const contentLevel = getModuleContentLevel(currentUser, 'vietnamese', catId, moduleLevel);
-    const previewReward = catId === 'writing'
-      ? `tối đa khoảng ${createWritingTask(contentLevel).rewardMax} 💎 theo chất lượng bài viết`
-      : `tối đa khoảng ${catId === 'reading' ? 10 : 12} 💎 nếu làm tốt`;
+    const previewReward = `trần thưởng level ${getLevelRewardCap(currentUser, moduleLevel)} 💎, cộng thưởng kỹ năng nếu làm tốt`;
     if ((catId === 'grammar' || catId === 'prep_riddle' || catId === 'writing' || (isGrade3 && catId === 'reading')) && !skipReminder) {
       setFairPlayReminder({
         timeSec: previewTime,
@@ -1158,6 +1155,8 @@ export default function ReadingTest() {
     setWrongAnswers([]);
     setCanAnswer(false);
     setActiveModuleLevel(moduleLevel);
+    const schedule = buildDifficultySchedule(currentUser, moduleLevel);
+    setDifficultySchedule(schedule);
 
     if (catId === 'grammar') {
       setScreen('grammar');
@@ -1165,7 +1164,7 @@ export default function ReadingTest() {
       const calculatedMaxTime = getLevelTiming(currentUser, 'vietnamese', catId, moduleLevel, 10).targetSeconds;
       setMaxTime(calculatedMaxTime);
       setTimeLeft(calculatedMaxTime);
-      generateUniqueGrammar(contentLevel);
+      generateUniqueGrammar(getTierContentLevel(currentUser, 'vietnamese', catId, moduleLevel, schedule[0]));
     } else if (catId === 'writing') {
       const task = createWritingTask(contentLevel);
       setScreen('writing');
@@ -1181,7 +1180,7 @@ export default function ReadingTest() {
       setTranscript("");
       setScoreData(null);
       if (catId === 'prep_riddle') {
-        const round = buildPrepQuizRound(contentLevel);
+        const round = buildPrepQuizRound(contentLevel, schedule);
         setPrepQuizIndex(0);
         setPrepQuizQueue(round);
         const calculatedMaxTime = getLevelTiming(currentUser, 'vietnamese', catId, moduleLevel, 10).targetSeconds;
@@ -1197,7 +1196,8 @@ export default function ReadingTest() {
       } else {
         const levelKey = getReadingLevelKey(contentLevel);
         const passages = GRADE3_READING_LIBRARY.filter((item) => item.level === levelKey);
-        const passage = passages[Math.floor(Math.random() * passages.length)];
+        const selectedPassage = passages[Math.floor(Math.random() * passages.length)];
+        const passage = { ...selectedPassage, questions: composeReadingQuestions(selectedPassage.questions) };
         setCurrentPassage(passage);
         setTargetText(passage.text);
         const wordCount = countWords(passage.text);
@@ -1268,7 +1268,7 @@ export default function ReadingTest() {
 
     if (grammarIndex + 1 < 10) {
       setGrammarIndex(grammarIndex + 1);
-      generateUniqueGrammar(getModuleContentLevel(currentUser, 'vietnamese', 'grammar', activeModuleLevel));
+      generateUniqueGrammar(getTierContentLevel(currentUser, 'vietnamese', 'grammar', activeModuleLevel, difficultySchedule[grammarIndex + 1]));
     } else {
       finishGrammar(newStats, newWrongs);
     }
@@ -1279,7 +1279,6 @@ export default function ReadingTest() {
     const timeSpentSec = maxTime - timeLeft;
     const currentModuleLevel = activeModuleLevel;
     const fastAnswers = 0;
-    const fastMultiplier = 1;
     const isRandomClicking = false;
     const weakSkillCounts = finalWrongs.reduce((acc, item) => {
       const skill = item.skill || 'Ôn tập';
@@ -1287,16 +1286,6 @@ export default function ReadingTest() {
       return acc;
     }, {});
     const weakSkills = Object.keys(weakSkillCounts).sort((a, b) => weakSkillCounts[b] - weakSkillCounts[a]);
-    let earnedPoints = getQuizBasePoints(finalStats.correct);
-    let speedBonus = 0;
-    
-    // Speed Bonus
-    if (finalStats.correct >= 8) {
-      if (timeLeft > maxTime * 0.5) speedBonus = 5;
-      else if (timeLeft > maxTime * 0.2) speedBonus = 2;
-    }
-    earnedPoints = Math.round((earnedPoints + speedBonus) * fastMultiplier);
-
     const progressMap = readProgressMap(currentUser);
     const progressKey = getProgressKey('vietnamese', category);
     const evaluation = evaluateAdaptiveLevel({
@@ -1315,11 +1304,16 @@ export default function ReadingTest() {
     const newLevel = saveModuleLevel(category, evaluation.nextLevel);
     saveAdaptiveProgress(currentUser, 'vietnamese', category, evaluation.progress);
     const levelMessage = evaluation.message;
+    const qualityPercent = getGuessCorrectedQuality(finalStats.correct, 10, 4);
+    const rewardBreakdown = calculateAndClaimReward({
+      level: currentModuleLevel, newLevel, decision: evaluation.decision, qualityPercent,
+      rawAccuracyPercent: finalStats.correct * 10, timeSpentSec, targetTimeSec: maxTime
+    });
 
     const behaviorMsg = "";
 
     saveResults(
-      earnedPoints,
+      rewardBreakdown.total,
       timeSpentSec,
       {
         correct: finalStats.correct,
@@ -1331,6 +1325,9 @@ export default function ReadingTest() {
         levelName: getVietnameseLevelName(currentModuleLevel, childMaxLevel),
         levelDecision: evaluation.decision,
         accuracyPercent: evaluation.result.accuracy,
+        guessCorrectedQuality: qualityPercent,
+        rewardBreakdown,
+        difficultySchedule,
         targetTimeSec: maxTime,
         timeRatio: evaluation.result.timeRatio,
         timeMet: evaluation.result.timeMet,
@@ -1353,7 +1350,6 @@ export default function ReadingTest() {
       alert('Bài viết còn quá ngắn. Bé hãy viết thêm theo các gợi ý nhé!');
       return;
     }
-    const points = Math.round((result.score / 10) * writingTask.rewardMax);
     const timeSpentSec = Math.round((Date.now() - stats.startTime) / 1000);
     const progressMap = readProgressMap(currentUser);
     const evaluation = evaluateAdaptiveLevel({
@@ -1370,7 +1366,16 @@ export default function ReadingTest() {
     const newLevel = saveModuleLevel('writing', evaluation.nextLevel);
     saveAdaptiveProgress(currentUser, 'vietnamese', 'writing', evaluation.progress);
     const levelMessage = evaluation.message;
-    saveResults(points, timeSpentSec, {
+    const skillBonus = Math.min(3,
+      (result.wordCount >= writingTask.minWords ? 1 : 0)
+      + (result.sentenceCount >= (writingTask.minSentences || 3) ? 1 : 0)
+      + (result.weakSkills.length === 0 ? 1 : 0));
+    const rewardBreakdown = calculateAndClaimReward({
+      moduleId: 'writing', level: activeModuleLevel, newLevel, decision: evaluation.decision,
+      qualityPercent: result.score * 10, rawAccuracyPercent: result.score * 10,
+      timeSpentSec, targetTimeSec: 0, timed: false, skillBonus
+    });
+    saveResults(rewardBreakdown.total, timeSpentSec, {
       correct: result.score,
       incorrect: 10 - result.score,
       writingScore: result.score,
@@ -1378,6 +1383,7 @@ export default function ReadingTest() {
       nextDifficultyLevel: newLevel,
       levelDecision: evaluation.decision,
       accuracyPercent: evaluation.result.accuracy,
+      rewardBreakdown,
       masteryCount: evaluation.progress.masteryCount,
       contentLevel: getModuleContentLevel(currentUser, 'vietnamese', 'writing', activeModuleLevel),
       levelName: writingTask.levelName,
@@ -1519,7 +1525,7 @@ export default function ReadingTest() {
     const progressMap = readProgressMap(currentUser);
     const scorePercent = category === 'prep_passage'
       ? (scoreData.readingScore || 0)
-      : ((scoreData.points || 0) * 10);
+      : Math.round((scoreData.readingScore || 0) * 0.4 + (scoreData.comprehensionScore || 0) * 0.6);
     const evaluation = evaluateAdaptiveLevel({
       username: currentUser,
       subject: 'vietnamese',
@@ -1534,8 +1540,17 @@ export default function ReadingTest() {
     const newLevel = saveModuleLevel(category, evaluation.nextLevel);
     saveAdaptiveProgress(currentUser, 'vietnamese', category, evaluation.progress);
     const levelMessage = evaluation.message;
+    const skillBonus = Math.min(3,
+      ((scoreData.accuracy || 0) >= 80 ? 1 : 0)
+      + ((scoreData.fluency || 0) >= 80 ? 1 : 0)
+      + ((category === 'prep_passage' ? scoreData.readingScore : scoreData.comprehensionScore) >= 80 ? 1 : 0));
+    const rewardBreakdown = calculateAndClaimReward({
+      level: currentLevel, newLevel, decision: evaluation.decision,
+      qualityPercent: scorePercent, rawAccuracyPercent: scorePercent,
+      timeSpentSec: totalTimeSpentSec, targetTimeSec: maxTime, timed: false, skillBonus
+    });
 
-    saveResults(scoreData.points, totalTimeSpentSec, {
+    saveResults(rewardBreakdown.total, totalTimeSpentSec, {
       wpm: scoreData.wpm, 
       accuracy: scoreData.accuracy, 
       fluency: scoreData.fluency,
@@ -1548,6 +1563,7 @@ export default function ReadingTest() {
       nextDifficultyLevel: newLevel,
       levelDecision: evaluation.decision,
       accuracyPercent: evaluation.result.accuracy,
+      rewardBreakdown,
       targetTimeSec: maxTime,
       timeRatio: evaluation.result.timeRatio,
       timeMet: evaluation.result.timeMet,
@@ -1587,8 +1603,8 @@ export default function ReadingTest() {
               }}
             >
               {isLocked && <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#F44336', color: 'white', padding: '5px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>🔒 KHOÁ</div>}
-              {isNerfed && <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#FF9800', color: 'white', padding: '5px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>⚠️ Giảm 50% Điểm</div>}
-              {isBoosted && <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#4CAF50', color: 'white', padding: '5px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite' }}>⭐ Khuyến khích x2 Điểm</div>}
+              {isNerfed && <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#FF9800', color: 'white', padding: '5px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold' }}>⚠️ Nên đổi module</div>}
+              {isBoosted && <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#4CAF50', color: 'white', padding: '5px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite' }}>⭐ Khuyến khích +10%</div>}
               
               <div style={{ fontSize: '2rem', marginBottom: '10px', filter: isLocked ? 'grayscale(100%)' : 'none' }}>{c.icon}</div>
               <div>{c.name}</div>

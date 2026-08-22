@@ -6,6 +6,7 @@ import ParentLearningDashboard from './ParentLearningDashboard';
 import GameSiteAdmin from './GameSiteAdmin';
 import { getParentGachaSettings, saveParentGachaSettings } from '../gachaApi';
 import { getChildLevelProfile, getLevelPhase, getLevelStage, getLevelTiming } from '../learningLevels';
+import { getLevelRewardCap } from '../rewardSystem';
 
 const DEFAULT_SETTINGS = {
   costPerSpin: 200,
@@ -121,6 +122,7 @@ const LearningLevelsPanel = ({ childId, childName }) => {
               <div style={{ color: '#607D8B', fontSize: '0.92rem', marginTop: '5px' }}>{row.stage.focus}</div>
               <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #CFD8DC', fontSize: '0.92rem', lineHeight: 1.55 }}>
                 <div>Thời gian mục tiêu: <strong>{formatSeconds(row.targetSeconds)}</strong></div>
+                <div>Trần thưởng theo level: <strong>{getLevelRewardCap(childId, row.currentLevel)} 💎</strong></div>
                 <div>Kết quả gần nhất: <strong>{row.accuracy === undefined ? 'Chưa có' : `${row.accuracy}% chính xác`}</strong></div>
                 <div>Tiến độ lên level: <strong>{row.masteryCount}/2 lượt đạt chuẩn</strong></div>
               </div>
@@ -506,6 +508,7 @@ export default function AdminDashboard() {
       localStorage.removeItem(`vietLevel_${selectedChild}`);
       localStorage.removeItem(`vietnameseModuleLevels_${selectedChild}`);
       localStorage.removeItem(`learningLevelProgress_${selectedChild}`);
+      localStorage.removeItem(`learningRewardProgress_${selectedChild}`);
       localStorage.removeItem(`learningLevelSchemaVersion_${selectedChild}`);
       loadPoints();
       loadChildData();
