@@ -5,6 +5,7 @@ import { pullFromServer, syncToServer } from '../sync';
 import ParentLearningDashboard from './ParentLearningDashboard';
 import GameSiteAdmin from './GameSiteAdmin';
 import { getParentGachaSettings, saveParentGachaSettings } from '../gachaApi';
+import { getChildLevelProfile, getLevelPhase, getLevelStage, getLevelTiming } from '../learningLevels';
 
 const DEFAULT_SETTINGS = {
   costPerSpin: 200,
@@ -51,38 +52,84 @@ const getLevelName = (level, maxLevel = 10) => {
 };
 
 const getLearningLevelRows = (childId) => {
-  const isDuc = childId === 'vuanhduc';
+  const profile = getChildLevelProfile(childId);
   const mathDifficulty = readJsonMap(`mathDifficultyLevels_${childId}`);
-  const mathTime = readJsonMap(`mathTimeLevels_${childId}`);
   const vietnamese = readJsonMap(`vietnameseModuleLevels_${childId}`);
-  const mathMax = isDuc
-    ? { algebra: 20, geometry: 100, logic: 10, all: 10 }
-    : { basic_math: 8, visual_math: 8 };
-  const mathNames = isDuc
-    ? { algebra: 'Toán - Đại số', geometry: 'Toán - Hình học', logic: 'Toán - Có lời văn', all: 'Toán - Tổng hợp' }
-    : { basic_math: 'Toán - Cộng trừ', visual_math: 'Toán - Đếm hình' };
-  const vietNames = isDuc
-    ? { grammar: 'Tiếng Việt - Ngữ pháp', writing: 'Tiếng Việt - Tập làm văn', reading: 'Tiếng Việt - Tập đọc' }
-    : { prep_passage: 'Tiếng Việt - Đọc đoạn văn', prep_riddle: 'Tiếng Việt - Đố vui' };
-
-  const mathRows = Object.keys(mathNames).map(key => {
-    const difficultyLevel = parseInt(mathDifficulty[key] || '1', 10);
-    const timeLevel = parseInt(mathTime[key] || '1', 10);
+  const progress = readJsonMap(`learningLevelProgress_${childId}`);
+  const buildRows = (subject, modules, levels) => modules.map(module => {
+    const currentLevel = clamp(parseInt(levels[module.id] || '1', 10), 1, profile.maxLevel);
+    const stage = getLevelStage(childId, currentLevel);
+    const phase = getLevelPhase(childId, currentLevel);
+    const itemCount = module.assessmentMode === 'reading' ? 3 : 10;
+    const timing = getLevelTiming(childId, subject, module.id, currentLevel, itemCount);
+    const moduleProgress = progress[`${subject}:${module.id}`] || {};
     return {
-      module: mathNames[key],
-      difficulty: getLevelName(difficultyLevel, mathMax[key] || 10),
-      detail: `Độ khó ${difficultyLevel}/${mathMax[key] || 10} · Nhịp thời gian ${timeLevel}/10`
+      id: `${subject}:${module.id}`,
+      subject,
+      module: module.name,
+      currentLevel,
+      maxLevel: profile.maxLevel,
+      difficulty: getLevelName(currentLevel, profile.maxLevel),
+      stage,
+      phase,
+      targetSeconds: timing.targetSeconds,
+      timed: timing.timed,
+      accuracy: moduleProgress.lastAccuracy,
+      timeRatio: moduleProgress.lastTimeRatio,
+      masteryCount: moduleProgress.masteryCount || 0,
+      decision: moduleProgress.lastDecision || 'new'
     };
   });
-  const vietRows = Object.keys(vietNames).map(key => {
-    const moduleLevel = parseInt(vietnamese[key] || localStorage.getItem(`vietLevel_${childId}`) || '1', 10);
-    return {
-      module: vietNames[key],
-      difficulty: getLevelName(moduleLevel, 10),
-      detail: `Trình độ ${moduleLevel}/10`
-    };
-  });
+  const mathRows = buildRows('math', profile.math, mathDifficulty);
+  const vietRows = buildRows('vietnamese', profile.vietnamese, vietnamese);
   return [...mathRows, ...vietRows];
+};
+
+const formatSeconds = (seconds) => {
+  if (!seconds) return 'Không giới hạn cứng';
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes ? `${minutes} phút ${remainder ? `${remainder} giây` : ''}`.trim() : `${remainder} giây`;
+};
+
+const LearningLevelsPanel = ({ childId, childName }) => {
+  const rows = getLearningLevelRows(childId);
+  const profile = getChildLevelProfile(childId);
+  return (
+    <div style={{ background: '#FFF', padding: '20px', borderRadius: '12px', border: '2px solid #1976D2' }}>
+      <h3 style={{ margin: 0, color: '#1565C0' }}>Level theo từng module: {childName}</h3>
+      <p style={{ color: '#546E7A', lineHeight: 1.5 }}>
+        Mỗi module có level độc lập trong database. Level điều khiển đồng thời độ khó nội dung và thời gian mục tiêu.
+        Bé cần đạt chuẩn 2 trong 3 lượt gần nhất mới tăng một level.
+      </p>
+      <div style={{ padding: '12px', background: '#E3F2FD', borderRadius: '8px', marginBottom: '16px' }}>
+        <strong>Thang level: 1–{profile.maxLevel}</strong> · Chương trình {profile.grade}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+        {rows.map(row => {
+          const percent = Math.round((row.currentLevel / row.maxLevel) * 100);
+          return (
+            <div key={row.id} style={{ padding: '15px', borderRadius: '10px', border: '1px solid #CFD8DC', borderLeft: `5px solid ${row.subject === 'math' ? '#1976D2' : '#43A047'}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                <strong style={{ color: '#263238' }}>{row.module}</strong>
+                <strong style={{ color: '#E65100', whiteSpace: 'nowrap' }}>Lv {row.currentLevel}/{row.maxLevel}</strong>
+              </div>
+              <div style={{ height: '9px', background: '#ECEFF1', borderRadius: '99px', overflow: 'hidden', margin: '10px 0' }}>
+                <div style={{ height: '100%', width: `${percent}%`, background: row.subject === 'math' ? '#42A5F5' : '#66BB6A' }} />
+              </div>
+              <div style={{ color: '#37474F', fontWeight: 'bold' }}>{row.stage.name} · {row.phase.name}</div>
+              <div style={{ color: '#607D8B', fontSize: '0.92rem', marginTop: '5px' }}>{row.stage.focus}</div>
+              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #CFD8DC', fontSize: '0.92rem', lineHeight: 1.55 }}>
+                <div>Thời gian mục tiêu: <strong>{formatSeconds(row.targetSeconds)}</strong></div>
+                <div>Kết quả gần nhất: <strong>{row.accuracy === undefined ? 'Chưa có' : `${row.accuracy}% chính xác`}</strong></div>
+                <div>Tiến độ lên level: <strong>{row.masteryCount}/2 lượt đạt chuẩn</strong></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 };
 
 export default function AdminDashboard() {
@@ -458,6 +505,8 @@ export default function AdminDashboard() {
       localStorage.removeItem(`mathTimeLevels_${selectedChild}`);
       localStorage.removeItem(`vietLevel_${selectedChild}`);
       localStorage.removeItem(`vietnameseModuleLevels_${selectedChild}`);
+      localStorage.removeItem(`learningLevelProgress_${selectedChild}`);
+      localStorage.removeItem(`learningLevelSchemaVersion_${selectedChild}`);
       loadPoints();
       loadChildData();
       syncToServer(selectedChild);
@@ -572,6 +621,14 @@ export default function AdminDashboard() {
           }}>
           📊 Trung tâm học tập
         </button>
+        <button
+          onClick={() => setActiveTab('levels')}
+          style={{
+            flex: 1, background: 'none', color: activeTab === 'levels' ? '#1976D2' : '#888',
+            borderBottom: activeTab === 'levels' ? '4px solid #1976D2' : 'none', borderRadius: 0, padding: '10px'
+          }}>
+          🎯 Level từng module
+        </button>
         <button 
           onClick={() => setActiveTab('history')}
           style={{ 
@@ -661,6 +718,10 @@ export default function AdminDashboard() {
 
       {activeTab === 'learning' && (
         <ParentLearningDashboard childId={selectedChild} childName={childName} />
+      )}
+
+      {activeTab === 'levels' && (
+        <LearningLevelsPanel childId={selectedChild} childName={childName} />
       )}
 
       {activeTab === 'analytics' && analyticsData && (

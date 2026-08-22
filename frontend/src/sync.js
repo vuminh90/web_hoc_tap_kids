@@ -12,6 +12,8 @@ const KEYS_TO_SYNC = [
   'mathDifficultyLevels',
   'mathTimeLevels',
   'vietnameseModuleLevels',
+  'learningLevelProgress',
+  'learningLevelSchemaVersion',
   'interventionPlans',
   'guidedPracticeLogs',
   'weeklyGoals',

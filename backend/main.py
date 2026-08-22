@@ -33,6 +33,19 @@ AUTH_SECRET = os.getenv("AUTH_SECRET", hashlib.sha256(f"kids-learning:{PARENT_PA
 TOKEN_TTL_SECONDS = 8 * 60 * 60
 PLAY_USERS = {"vuanhduc", "vuanhthu"}
 DATA_LOCK = threading.RLock()
+LEARNING_LEVEL_SCHEMA_VERSION = 4
+LEARNING_LEVEL_PROFILES = {
+    "vuanhthu": {
+        "maxLevel": 20,
+        "mathModules": ["basic_math", "visual_math"],
+        "vietnameseModules": ["prep_passage", "prep_riddle"],
+    },
+    "vuanhduc": {
+        "maxLevel": 50,
+        "mathModules": ["algebra", "geometry", "logic", "all"],
+        "vietnameseModules": ["grammar", "writing", "reading"],
+    },
+}
 
 class ParentLogin(BaseModel):
     password: str
@@ -166,6 +179,48 @@ def save_data(data):
             (APP_STATE_KEY, payload, int(time.time())),
         )
         connection.commit()
+
+def normalize_level(value, maximum, fallback=1):
+    try:
+        return max(1, min(maximum, int(value)))
+    except (TypeError, ValueError):
+        return max(1, min(maximum, int(fallback or 1)))
+
+def ensure_learning_level_data(student_data, username):
+    """Migrate legacy shared levels into independent, database-backed module levels."""
+    profile = LEARNING_LEVEL_PROFILES.get(username)
+    if not profile:
+        return student_data
+    if not isinstance(student_data, dict):
+        student_data = {}
+
+    maximum = profile["maxLevel"]
+    should_reset_levels = student_data.get("learningLevelSchemaVersion") != LEARNING_LEVEL_SCHEMA_VERSION
+    legacy_math = 1 if should_reset_levels else normalize_level(student_data.get("mathLevel", 1), maximum)
+    legacy_vietnamese = 1 if should_reset_levels else normalize_level(student_data.get("vietLevel", 1), maximum)
+    math_levels = student_data.get("mathDifficultyLevels")
+    vietnamese_levels = student_data.get("vietnameseModuleLevels")
+    if not isinstance(math_levels, dict):
+        math_levels = {}
+    if not isinstance(vietnamese_levels, dict):
+        vietnamese_levels = {}
+
+    student_data["mathDifficultyLevels"] = {
+        module_id: 1 if should_reset_levels else normalize_level(math_levels.get(module_id), maximum, legacy_math)
+        for module_id in profile["mathModules"]
+    }
+    student_data["vietnameseModuleLevels"] = {
+        module_id: 1 if should_reset_levels else normalize_level(vietnamese_levels.get(module_id), maximum, legacy_vietnamese)
+        for module_id in profile["vietnameseModules"]
+    }
+    if should_reset_levels or not isinstance(student_data.get("learningLevelProgress"), dict):
+        student_data["learningLevelProgress"] = {}
+    if should_reset_levels:
+        student_data["mathLevel"] = 1
+        student_data["vietLevel"] = 1
+        student_data["mathTimeLevels"] = {module_id: 1 for module_id in profile["mathModules"]}
+    student_data["learningLevelSchemaVersion"] = LEARNING_LEVEL_SCHEMA_VERSION
+    return student_data
 
 def require_student(x_student: str | None = Header(default=None)):
     if x_student not in PLAY_USERS:
@@ -372,18 +427,56 @@ def adjust_play_time(payload: TimeAdjustment, _: bool = Depends(verify_parent_to
 
 @app.get("/api/sync/{username}")
 def get_sync_data(username: str):
-    data = load_data()
-    return data.get(username, {})
+    if username not in PLAY_USERS:
+        raise HTTPException(status_code=404, detail="Không tìm thấy học sinh")
+    with DATA_LOCK:
+        data = load_data()
+        student_data = ensure_learning_level_data(data.get(username, {}), username)
+        data[username] = student_data
+        save_data(data)
+        return student_data
 
 @app.post("/api/sync/{username}")
 async def post_sync_data(username: str, request: Request):
+    if username not in PLAY_USERS:
+        raise HTTPException(status_code=404, detail="Không tìm thấy học sinh")
     payload = await request.json()
-    data = load_data()
-    existing = data.get(username, {})
-    if not isinstance(existing, dict):
-        existing = {}
-    existing.update(payload)
-    data[username] = existing
-    save_data(data)
-    return {"status": "success"}
+    incoming_level_schema = payload.get("learningLevelSchemaVersion")
+    if incoming_level_schema != LEARNING_LEVEL_SCHEMA_VERSION:
+        for stale_key in (
+            "mathLevel",
+            "vietLevel",
+            "mathDifficultyLevels",
+            "mathTimeLevels",
+            "vietnameseModuleLevels",
+            "learningLevelProgress",
+        ):
+            payload.pop(stale_key, None)
+    with DATA_LOCK:
+        data = load_data()
+        existing = data.get(username, {})
+        if not isinstance(existing, dict):
+            existing = {}
+        existing.update(payload)
+        data[username] = ensure_learning_level_data(existing, username)
+        save_data(data)
+        return {"status": "success", "learningLevelSchemaVersion": LEARNING_LEVEL_SCHEMA_VERSION}
+
+@app.get("/api/parent/levels")
+def get_parent_learning_levels(_: bool = Depends(verify_parent_token)):
+    with DATA_LOCK:
+        data = load_data()
+        result = {}
+        for username in sorted(PLAY_USERS):
+            student_data = ensure_learning_level_data(data.get(username, {}), username)
+            data[username] = student_data
+            result[username] = {
+                "maxLevel": LEARNING_LEVEL_PROFILES[username]["maxLevel"],
+                "mathDifficultyLevels": student_data["mathDifficultyLevels"],
+                "vietnameseModuleLevels": student_data["vietnameseModuleLevels"],
+                "learningLevelProgress": student_data["learningLevelProgress"],
+                "learningLevelSchemaVersion": student_data["learningLevelSchemaVersion"],
+            }
+        save_data(data)
+        return result
 

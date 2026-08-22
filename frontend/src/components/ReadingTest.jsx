@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { syncToServer } from '../sync';
 import FairPlayReminder from './FairPlayReminder';
+import { getChildMaxLevel, getLevelPhase, getLevelTiming, getModuleContentLevel } from '../learningLevels';
+import { evaluateAdaptiveLevel, getProgressKey, readProgressMap, saveAdaptiveProgress } from '../adaptiveLevel';
 
 const GRADE3_VIETNAMESE = [
   { id: 'grammar', name: 'Ngữ pháp (Từ vựng, Câu)', icon: '📝' },
@@ -302,7 +304,6 @@ const PREP_ANIMALS = [
 
 const DIFFICULTY_LEVELS = ["dễ", "trung bình", "cao", "đặc biệt"];
 const MIN_ANSWER_TIME_MS = 2000;
-const RANDOM_CLICK_TIME_MS = 3000;
 
 const getQuizBasePoints = (correct) => {
   if (correct <= 4) return 0;
@@ -311,12 +312,6 @@ const getQuizBasePoints = (correct) => {
   if (correct === 8) return 8;
   if (correct === 9) return 10;
   return 12;
-};
-
-const getFastAnswerMultiplier = (fastAnswers) => {
-  if (fastAnswers >= 3) return 0;
-  if (fastAnswers >= 1) return 0.5;
-  return 1;
 };
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -341,13 +336,10 @@ const VIET_LEVEL_NAMES = [
   'Thử thách'
 ];
 
-const getVietnameseLevelName = (level) => VIET_LEVEL_NAMES[clamp(level, 1, 10) - 1];
-const getVietnameseMaxTime = (catId, level, isAdvancedStudent) => {
-  if (catId === 'grammar') return clamp((isAdvancedStudent ? 260 : 420) - ((level - 1) * (isAdvancedStudent ? 12 : 18)), 120, isAdvancedStudent ? 260 : 420);
-  if (catId === 'writing') return 0;
-  return 120;
+const getVietnameseLevelName = (level, maxLevel = 10) => {
+  const index = Math.ceil((clamp(level, 1, maxLevel) / maxLevel) * VIET_LEVEL_NAMES.length) - 1;
+  return VIET_LEVEL_NAMES[clamp(index, 0, VIET_LEVEL_NAMES.length - 1)];
 };
-
 const GRAMMAR_WORD_BANK = {
   nouns: ['cái bàn', 'quyển sách', 'bông hoa', 'con mèo', 'sân trường', 'dòng sông', 'chiếc cặp', 'ngôi nhà', 'cô giáo', 'bạn Nam', 'cây bàng', 'tiếng trống'],
   verbs: ['chạy', 'đọc', 'viết', 'nhảy', 'hát', 'vẽ', 'giúp đỡ', 'quan sát', 'chăm sóc', 'sắp xếp', 'lắng nghe', 'tưới cây'],
@@ -767,8 +759,8 @@ export default function ReadingTest() {
   const navigate = useNavigate();
   const currentUser = localStorage.getItem('currentUser') || 'vuanhduc';
   const isGrade3 = currentUser === 'vuanhduc';
+  const childMaxLevel = getChildMaxLevel(currentUser);
 
-  const [level, setLevel] = useState(parseInt(localStorage.getItem(`vietLevel_${currentUser}`) || '1', 10));
   const moduleLevelKey = `vietnameseModuleLevels_${currentUser}`;
   const [moduleLevels, setModuleLevels] = useState(() => readJsonMap(moduleLevelKey));
   const [activeModuleLevel, setActiveModuleLevel] = useState(1);
@@ -807,38 +799,20 @@ export default function ReadingTest() {
   const timerRef = useRef(null);
   const recognitionRef = useRef(null);
   const answerDelayRef = useRef(null);
-  const questionStartedAtRef = useRef(null);
-  const fastAnswerCountRef = useRef(0);
-  const readingQuestionStartedAtRef = useRef(null);
-  const readingFastAnswerCountRef = useRef(0);
-  const readingTimedQuestionsRef = useRef(new Set());
 
   const beginAnswerDelay = () => {
     clearTimeout(answerDelayRef.current);
-    questionStartedAtRef.current = Date.now();
     setCanAnswer(false);
     answerDelayRef.current = setTimeout(() => setCanAnswer(true), MIN_ANSWER_TIME_MS);
   };
 
-  const recordAnswerTiming = () => {
-    const elapsedMs = Date.now() - (questionStartedAtRef.current || Date.now());
-    const wasFast = elapsedMs < RANDOM_CLICK_TIME_MS;
-    if (wasFast) {
-      fastAnswerCountRef.current += 1;
-    }
-    return wasFast;
-  };
-
-  const getModuleLevel = (moduleId) => clamp(parseInt(moduleLevels[moduleId] || '1', 10), 1, 10);
+  const getModuleLevel = (moduleId) => clamp(parseInt(moduleLevels[moduleId] || '1', 10), 1, childMaxLevel);
 
   const saveModuleLevel = (moduleId, nextLevel) => {
-    const normalized = clamp(nextLevel, 1, 10);
+    const normalized = clamp(nextLevel, 1, childMaxLevel);
     const nextLevels = { ...moduleLevels, [moduleId]: normalized };
     setModuleLevels(nextLevels);
     localStorage.setItem(moduleLevelKey, JSON.stringify(nextLevels));
-    if (moduleId === 'grammar' || moduleId === 'writing') {
-      localStorage.setItem(`vietLevel_${currentUser}`, normalized.toString());
-    }
     return normalized;
   };
 
@@ -893,12 +867,15 @@ export default function ReadingTest() {
 
   // --- COUNTDOWN EFFECT ---
   useEffect(() => {
-    if ((screen === 'grammar' || (screen === 'reading' && isRecording)) && timeLeft > 0) {
+    const isTimedReadingFlow = screen === 'reading' && (
+      isRecording || category === 'prep_riddle' || (Boolean(currentPassage) && !readingSubmitted)
+    );
+    if ((screen === 'grammar' || isTimedReadingFlow) && timeLeft > 0) {
       timerRef.current = setTimeout(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
       return () => clearTimeout(timerRef.current);
-    } else if (screen === 'grammar' && timeLeft === 0) {
+    } else if ((screen === 'grammar' || (screen === 'reading' && category === 'prep_riddle')) && timeLeft === 0) {
       finishGrammar(stats, wrongAnswers, true);
     } else if (screen === 'reading' && isRecording && timeLeft === 0) {
       if (recognitionRef.current) {
@@ -1113,7 +1090,7 @@ export default function ReadingTest() {
     const statsKey = `learningStats_${currentUser}`;
     const learningHistory = JSON.parse(localStorage.getItem(statsKey) || '[]');
     learningHistory.unshift({
-      schemaVersion: 2,
+      schemaVersion: 3,
       sessionId: globalThis.crypto?.randomUUID?.() || `viet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       date: new Date().toISOString(),
       subject: 'reading',
@@ -1156,21 +1133,21 @@ export default function ReadingTest() {
   };
 
   const startGame = (catId, skipReminder = false) => {
-    const moduleLevel = (catId === 'grammar' || catId === 'writing') ? getModuleLevel(catId) : level;
-    const previewTime = catId === 'grammar'
-      ? getVietnameseMaxTime('grammar', moduleLevel, isGrade3)
-      : ((isGrade3 && catId === 'reading') ? Math.max(90, Math.ceil(80 / 70 * 60)) : null);
+    const moduleLevel = getModuleLevel(catId);
+    const timing = getLevelTiming(currentUser, 'vietnamese', catId, moduleLevel, catId === 'prep_passage' || catId === 'reading' ? 3 : 10);
+    const previewTime = timing.timed ? timing.targetSeconds : null;
+    const contentLevel = getModuleContentLevel(currentUser, 'vietnamese', catId, moduleLevel);
     const previewReward = catId === 'writing'
-      ? `tối đa khoảng ${createWritingTask(moduleLevel).rewardMax} 💎 theo chất lượng bài viết`
+      ? `tối đa khoảng ${createWritingTask(contentLevel).rewardMax} 💎 theo chất lượng bài viết`
       : `tối đa khoảng ${catId === 'reading' ? 10 : 12} 💎 nếu làm tốt`;
     if ((catId === 'grammar' || catId === 'prep_riddle' || catId === 'writing' || (isGrade3 && catId === 'reading')) && !skipReminder) {
       setFairPlayReminder({
         timeSec: previewTime,
         timeText: catId === 'writing'
           ? 'không giới hạn, bé viết xong rồi nộp'
-          : (catId === 'prep_riddle' ? 'không tính thời gian' : undefined),
+          : undefined,
         rewardText: previewReward,
-        hideSpeedRules: catId === 'prep_riddle',
+        hideSpeedRules: catId === 'writing',
         onConfirm: () => startGame(catId, true)
       });
       return;
@@ -1179,25 +1156,18 @@ export default function ReadingTest() {
     setStats({ correct: 0, incorrect: 0, startTime: Date.now() });
     setUsedQuestions(new Set());
     setWrongAnswers([]);
-    fastAnswerCountRef.current = 0;
-    readingFastAnswerCountRef.current = 0;
-    readingQuestionStartedAtRef.current = null;
-    readingTimedQuestionsRef.current = new Set();
     setCanAnswer(false);
+    setActiveModuleLevel(moduleLevel);
 
     if (catId === 'grammar') {
-      const grammarLevel = getModuleLevel('grammar');
-      setActiveModuleLevel(grammarLevel);
       setScreen('grammar');
       setGrammarIndex(0);
-      const calculatedMaxTime = getVietnameseMaxTime('grammar', grammarLevel, isGrade3);
+      const calculatedMaxTime = getLevelTiming(currentUser, 'vietnamese', catId, moduleLevel, 10).targetSeconds;
       setMaxTime(calculatedMaxTime);
       setTimeLeft(calculatedMaxTime);
-      generateUniqueGrammar(grammarLevel);
+      generateUniqueGrammar(contentLevel);
     } else if (catId === 'writing') {
-      const writingLevel = getModuleLevel('writing');
-      const task = createWritingTask(writingLevel);
-      setActiveModuleLevel(writingLevel);
+      const task = createWritingTask(contentLevel);
       setScreen('writing');
       setWritingTask(task);
       setWritingTopic(task.prompt);
@@ -1211,25 +1181,29 @@ export default function ReadingTest() {
       setTranscript("");
       setScoreData(null);
       if (catId === 'prep_riddle') {
-        const round = buildPrepQuizRound(level);
+        const round = buildPrepQuizRound(contentLevel);
         setPrepQuizIndex(0);
         setPrepQuizQueue(round);
-        setMaxTime(0);
-        setTimeLeft(0);
+        const calculatedMaxTime = getLevelTiming(currentUser, 'vietnamese', catId, moduleLevel, 10).targetSeconds;
+        setMaxTime(calculatedMaxTime);
+        setTimeLeft(calculatedMaxTime);
         setPrepQuestion(round[0]);
       } else if (catId === 'prep_passage') {
-        setTargetText(getPrepPassage(level));
-        const calculatedTime = level <= 1 ? 60 : (level === 2 ? 75 : (level === 3 ? 90 : 105));
+        setTargetText(getPrepPassage(contentLevel));
+        const baseTime = contentLevel <= 1 ? 60 : (contentLevel === 2 ? 75 : (contentLevel === 3 ? 90 : 105));
+        const calculatedTime = Math.round(baseTime * getLevelPhase(currentUser, moduleLevel).multiplier);
         setMaxTime(calculatedTime);
         setTimeLeft(calculatedTime);
       } else {
-        const levelKey = getReadingLevelKey(level);
+        const levelKey = getReadingLevelKey(contentLevel);
         const passages = GRADE3_READING_LIBRARY.filter((item) => item.level === levelKey);
         const passage = passages[Math.floor(Math.random() * passages.length)];
         setCurrentPassage(passage);
         setTargetText(passage.text);
         const wordCount = countWords(passage.text);
-        const calculatedTime = Math.max(90, Math.ceil((wordCount / 70) * 60));
+        const readingTime = Math.max(90, Math.ceil((wordCount / 70) * 60));
+        const answerTime = getLevelTiming(currentUser, 'vietnamese', catId, moduleLevel, 5).targetSeconds;
+        const calculatedTime = Math.round((readingTime + answerTime) * getLevelPhase(currentUser, moduleLevel).multiplier);
         setMaxTime(calculatedTime);
         setTimeLeft(calculatedTime);
       }
@@ -1271,7 +1245,6 @@ export default function ReadingTest() {
 
   const handleGrammarAnswer = (ans) => {
     if (!canAnswer) return;
-    recordAnswerTiming();
     const isCorrect = ans === grammarQ.ans;
     let newStats = { ...stats };
     let newWrongs = [...wrongAnswers];
@@ -1295,7 +1268,7 @@ export default function ReadingTest() {
 
     if (grammarIndex + 1 < 10) {
       setGrammarIndex(grammarIndex + 1);
-      generateUniqueGrammar(activeModuleLevel);
+      generateUniqueGrammar(getModuleContentLevel(currentUser, 'vietnamese', 'grammar', activeModuleLevel));
     } else {
       finishGrammar(newStats, newWrongs);
     }
@@ -1303,13 +1276,11 @@ export default function ReadingTest() {
 
   const finishGrammar = (finalStats, finalWrongs = [], isTimeout = false) => {
     clearTimeout(timerRef.current);
-    const isUntimedPrepRiddle = category === 'prep_riddle';
-    const timeSpentSec = isUntimedPrepRiddle ? 0 : maxTime - timeLeft;
-    const currentModuleLevel = category === 'grammar' ? activeModuleLevel : level;
-    const maxModuleLevel = category === 'grammar' ? 10 : DIFFICULTY_LEVELS.length;
-    const fastAnswers = fastAnswerCountRef.current;
-    const fastMultiplier = getFastAnswerMultiplier(fastAnswers);
-    const isRandomClicking = fastAnswers >= 3;
+    const timeSpentSec = maxTime - timeLeft;
+    const currentModuleLevel = activeModuleLevel;
+    const fastAnswers = 0;
+    const fastMultiplier = 1;
+    const isRandomClicking = false;
     const weakSkillCounts = finalWrongs.reduce((acc, item) => {
       const skill = item.skill || 'Ôn tập';
       acc[skill] = (acc[skill] || 0) + 1;
@@ -1320,47 +1291,32 @@ export default function ReadingTest() {
     let speedBonus = 0;
     
     // Speed Bonus
-    if (!isUntimedPrepRiddle && finalStats.correct >= 8) {
+    if (finalStats.correct >= 8) {
       if (timeLeft > maxTime * 0.5) speedBonus = 5;
       else if (timeLeft > maxTime * 0.2) speedBonus = 2;
     }
     earnedPoints = Math.round((earnedPoints + speedBonus) * fastMultiplier);
 
-    // Level Adjustment
-    let newLevel = currentModuleLevel;
-    let levelMessage = "";
-    if (finalStats.correct >= 9) {
-      newLevel = Math.min(currentModuleLevel + 1, maxModuleLevel);
-      levelMessage = `Rất tốt! Bé lên ${getVietnameseLevelName(newLevel)}.`;
-    } else if (finalStats.correct >= 7) {
-      levelMessage = `Bé giữ ${getVietnameseLevelName(currentModuleLevel)} để luyện chắc hơn.`;
-    } else if (finalStats.correct <= 4 && currentModuleLevel > 1) {
-      newLevel = Math.max(1, currentModuleLevel - 1);
-      levelMessage = `Mình giảm về ${getVietnameseLevelName(newLevel)} để bé ôn lại nhẹ hơn.`;
-    }
-    
-    if (isTimeout) {
-      levelMessage = "⏰ Hết giờ. Lần sau hệ thống sẽ giữ bài vừa sức để bé làm cẩn thận hơn.";
-    }
+    const progressMap = readProgressMap(currentUser);
+    const progressKey = getProgressKey('vietnamese', category);
+    const evaluation = evaluateAdaptiveLevel({
+      username: currentUser,
+      subject: 'vietnamese',
+      moduleId: category,
+      currentLevel: currentModuleLevel,
+      correct: finalStats.correct,
+      total: 10,
+      timeSpentSec,
+      targetTimeSec: maxTime,
+      isTimeout,
+      isRandomClicking,
+      previousProgress: progressMap[progressKey]
+    });
+    const newLevel = saveModuleLevel(category, evaluation.nextLevel);
+    saveAdaptiveProgress(currentUser, 'vietnamese', category, evaluation.progress);
+    const levelMessage = evaluation.message;
 
-    if (isRandomClicking) {
-      newLevel = currentModuleLevel;
-      levelMessage = `Bé giữ ${getVietnameseLevelName(currentModuleLevel)}. Lượt này có nhiều câu chọn quá nhanh nên không tăng level.`;
-    }
-
-    if (category === 'grammar') {
-      saveModuleLevel('grammar', newLevel);
-    } else if (newLevel !== level) {
-      setLevel(newLevel);
-      localStorage.setItem(`vietLevel_${currentUser}`, newLevel.toString());
-    }
-
-    let behaviorMsg = "";
-    if (isRandomClicking) {
-      behaviorMsg = `Bài làm có ${fastAnswers} câu chọn dưới 3 giây nên được tính là click bừa: không cộng thưởng và không tăng độ khó.\n`;
-    } else if (fastAnswers > 0) {
-      behaviorMsg = `Bài làm có ${fastAnswers} câu chọn dưới 3 giây nên điểm thưởng giảm 50%.\n`;
-    }
+    const behaviorMsg = "";
 
     saveResults(
       earnedPoints,
@@ -1369,9 +1325,17 @@ export default function ReadingTest() {
         correct: finalStats.correct,
         incorrect: finalStats.incorrect,
         fastAnswers,
+        randomClicking: isRandomClicking,
         difficultyLevel: currentModuleLevel,
         nextDifficultyLevel: newLevel,
-        levelName: getVietnameseLevelName(currentModuleLevel),
+        levelName: getVietnameseLevelName(currentModuleLevel, childMaxLevel),
+        levelDecision: evaluation.decision,
+        accuracyPercent: evaluation.result.accuracy,
+        targetTimeSec: maxTime,
+        timeRatio: evaluation.result.timeRatio,
+        timeMet: evaluation.result.timeMet,
+        masteryCount: evaluation.progress.masteryCount,
+        contentLevel: getModuleContentLevel(currentUser, 'vietnamese', category, currentModuleLevel),
         weakSkills,
         skillBreakdown: weakSkillCounts,
         suggestedReview: weakSkills.length ? `Ôn lại: ${weakSkills.slice(0, 2).join(', ')}` : 'Bé làm rất chắc, có thể tăng độ khó.'
@@ -1391,26 +1355,31 @@ export default function ReadingTest() {
     }
     const points = Math.round((result.score / 10) * writingTask.rewardMax);
     const timeSpentSec = Math.round((Date.now() - stats.startTime) / 1000);
-    let newLevel = activeModuleLevel;
-    let levelMessage = "";
-    if (result.score >= 8) {
-      newLevel = Math.min(activeModuleLevel + 1, 10);
-      levelMessage = `Bài viết tốt! Bé lên ${getVietnameseLevelName(newLevel)}.`;
-    } else if (result.score >= 6) {
-      levelMessage = `Bé giữ ${getVietnameseLevelName(activeModuleLevel)} để luyện viết chắc hơn.`;
-    } else if (activeModuleLevel > 1) {
-      newLevel = Math.max(1, activeModuleLevel - 1);
-      levelMessage = `Mình giảm về ${getVietnameseLevelName(newLevel)} để đề lần sau có gợi ý dễ hơn.`;
-    } else {
-      levelMessage = 'Bé cứ viết từng câu ngắn, rõ ý trước nhé.';
-    }
-    saveModuleLevel('writing', newLevel);
+    const progressMap = readProgressMap(currentUser);
+    const evaluation = evaluateAdaptiveLevel({
+      username: currentUser,
+      subject: 'vietnamese',
+      moduleId: 'writing',
+      currentLevel: activeModuleLevel,
+      scorePercent: result.score * 10,
+      timeSpentSec,
+      targetTimeSec: 0,
+      timeRequired: false,
+      previousProgress: progressMap[getProgressKey('vietnamese', 'writing')]
+    });
+    const newLevel = saveModuleLevel('writing', evaluation.nextLevel);
+    saveAdaptiveProgress(currentUser, 'vietnamese', 'writing', evaluation.progress);
+    const levelMessage = evaluation.message;
     saveResults(points, timeSpentSec, {
       correct: result.score,
       incorrect: 10 - result.score,
       writingScore: result.score,
       difficultyLevel: activeModuleLevel,
       nextDifficultyLevel: newLevel,
+      levelDecision: evaluation.decision,
+      accuracyPercent: evaluation.result.accuracy,
+      masteryCount: evaluation.progress.masteryCount,
+      contentLevel: getModuleContentLevel(currentUser, 'vietnamese', 'writing', activeModuleLevel),
       levelName: writingTask.levelName,
       writingType: writingTask.type,
       topic: writingTask.topic,
@@ -1493,17 +1462,10 @@ export default function ReadingTest() {
       points: readingPoints,
       timeSpentSec
     });
-    readingQuestionStartedAtRef.current = Date.now();
   };
 
   const handleReadingAnswer = (questionIndex, option) => {
-    const elapsedMs = Date.now() - (readingQuestionStartedAtRef.current || Date.now());
-    if (!readingTimedQuestionsRef.current.has(questionIndex) && elapsedMs < RANDOM_CLICK_TIME_MS) {
-      readingFastAnswerCountRef.current += 1;
-    }
-    readingTimedQuestionsRef.current.add(questionIndex);
     setReadingAnswers({ ...readingAnswers, [questionIndex]: option });
-    readingQuestionStartedAtRef.current = Date.now();
   };
 
   const submitReadingAnswers = () => {
@@ -1535,8 +1497,8 @@ export default function ReadingTest() {
 
     const comprehensionScore = correct * 20;
     const comprehensionPoints = correct;
-    const fastAnswers = readingFastAnswerCountRef.current;
-    const fastMultiplier = getFastAnswerMultiplier(fastAnswers);
+    const fastAnswers = 0;
+    const fastMultiplier = 1;
     const totalPoints = Math.round(Math.min(10, (scoreData?.readingPoints || 0) + comprehensionPoints) * fastMultiplier);
     setWrongAnswers(wrongDetails);
     setReadingSubmitted(true);
@@ -1547,28 +1509,33 @@ export default function ReadingTest() {
       comprehensionPoints,
       points: totalPoints,
       fastAnswers,
-      randomClicking: fastAnswers >= 3
+      randomClicking: false
     });
   };
 
   const finishReading = () => {
-    let newLevel = level;
-    let levelMessage = "";
-    if (scoreData.randomClicking) {
-      newLevel = level;
-      levelMessage = `Bé giữ cấp ${level}. Phần đọc hiểu có nhiều câu chọn quá nhanh nên không tăng level.`;
-    } else if (scoreData.points >= 9) {
-      newLevel = Math.min(level + 1, DIFFICULTY_LEVELS.length);
-    } else if (scoreData.points <= 4 && level > 1) {
-      newLevel -= 1;
-    }
+    const currentLevel = activeModuleLevel;
+    const totalTimeSpentSec = Math.max(scoreData.timeSpentSec || 0, Math.round((Date.now() - stats.startTime) / 1000));
+    const progressMap = readProgressMap(currentUser);
+    const scorePercent = category === 'prep_passage'
+      ? (scoreData.readingScore || 0)
+      : ((scoreData.points || 0) * 10);
+    const evaluation = evaluateAdaptiveLevel({
+      username: currentUser,
+      subject: 'vietnamese',
+      moduleId: category,
+      currentLevel,
+      scorePercent,
+      timeSpentSec: totalTimeSpentSec,
+      targetTimeSec: maxTime,
+      isRandomClicking: scoreData.randomClicking,
+      previousProgress: progressMap[getProgressKey('vietnamese', category)]
+    });
+    const newLevel = saveModuleLevel(category, evaluation.nextLevel);
+    saveAdaptiveProgress(currentUser, 'vietnamese', category, evaluation.progress);
+    const levelMessage = evaluation.message;
 
-    if (newLevel !== level) {
-      setLevel(newLevel);
-      localStorage.setItem(`vietLevel_${currentUser}`, newLevel.toString());
-    }
-
-    saveResults(scoreData.points, scoreData.timeSpentSec, { 
+    saveResults(scoreData.points, totalTimeSpentSec, {
       wpm: scoreData.wpm, 
       accuracy: scoreData.accuracy, 
       fluency: scoreData.fluency,
@@ -1577,11 +1544,18 @@ export default function ReadingTest() {
       comprehensionCorrect: scoreData.comprehensionCorrect,
       fastAnswers: scoreData.fastAnswers || 0,
       randomClicking: scoreData.randomClicking || false,
+      difficultyLevel: currentLevel,
+      nextDifficultyLevel: newLevel,
+      levelDecision: evaluation.decision,
+      accuracyPercent: evaluation.result.accuracy,
+      targetTimeSec: maxTime,
+      timeRatio: evaluation.result.timeRatio,
+      timeMet: evaluation.result.timeMet,
+      masteryCount: evaluation.progress.masteryCount,
+      contentLevel: getModuleContentLevel(currentUser, 'vietnamese', category, currentLevel),
       passageId: currentPassage?.id,
       passageLevel: currentPassage?.level
-    }, levelMessage, wrongAnswers, scoreData.randomClicking
-      ? `Phần đọc hiểu có ${scoreData.fastAnswers} câu chọn dưới 3 giây nên được tính là click bừa: không cộng thưởng và không tăng độ khó.\n`
-      : ((scoreData.fastAnswers || 0) > 0 ? `Phần đọc hiểu có ${scoreData.fastAnswers} câu chọn dưới 3 giây nên điểm thưởng giảm 50%.\n` : ""));
+    }, levelMessage, wrongAnswers, "");
   };
 
   if (screen === 'hub') {
@@ -1617,7 +1591,10 @@ export default function ReadingTest() {
               {isBoosted && <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#4CAF50', color: 'white', padding: '5px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', animation: 'pulse 1.5s infinite' }}>⭐ Khuyến khích x2 Điểm</div>}
               
               <div style={{ fontSize: '2rem', marginBottom: '10px', filter: isLocked ? 'grayscale(100%)' : 'none' }}>{c.icon}</div>
-              {c.name}
+              <div>{c.name}</div>
+              <div style={{ marginTop: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                Level {getModuleLevel(c.id)}/{childMaxLevel} · {getLevelPhase(currentUser, getModuleLevel(c.id)).name}
+              </div>
             </button>
             )
           })}
@@ -1698,8 +1675,8 @@ export default function ReadingTest() {
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ color: '#2E7D32', margin: 0 }}>Đố vui hoa quả & con vật</h2>
-            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#E65100' }}>
-              Câu {prepQuizIndex + 1}/10
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: timerColor }}>
+              Câu {prepQuizIndex + 1}/10 · ⏱ {timeLeft}s
             </div>
           </div>
           <div style={{ fontSize: '1.3rem', margin: '30px 0', padding: '20px', background: '#FFF8E1', borderRadius: '10px', minHeight: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
@@ -1816,6 +1793,7 @@ export default function ReadingTest() {
           {category === 'writing' && <h3>Bài viết: {stats.writingScore}/10 điểm</h3>}
           <p>Thời gian: {stats.timeSpentSec}s</p>
           <p style={{ color: '#4CAF50', fontWeight: 'bold' }}>{stats.interventionMsg}</p>
+          {stats.levelUpMsg && <p style={{ color: '#6A1B9A', fontWeight: 'bold' }}>{stats.levelUpMsg}</p>}
           {stats.suggestedReview && <p style={{ color: '#6A1B9A', fontWeight: 'bold' }}>{stats.suggestedReview}</p>}
           <p style={{ color: '#1976D2', fontSize: '1.2rem', fontWeight: 'bold' }}>Tổng thưởng: {stats.finalPoints} 💎</p>
         </div>
