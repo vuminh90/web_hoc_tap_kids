@@ -97,6 +97,7 @@ def api_get(path: str, student: str):
 
 
 def active_game():
+    active_sessions = []
     for student in STUDENTS:
         wallet = api_get("/api/play/wallet", student)
         session = wallet.get("session")
@@ -104,8 +105,10 @@ def active_game():
             sites = api_get("/api/play/sites", student)
             site = next((item for item in sites if item.get("id") == session.get("site_id")), None)
             if site:
-                return student, wallet, site
-    return None
+                active_sessions.append((student, wallet, site))
+    if not active_sessions:
+        return None
+    return max(active_sessions, key=lambda item: item[1]["session"].get("started_at", 0))
 
 
 def browser_tabs():
@@ -193,15 +196,18 @@ def inject_timer(seconds: int, game_name: str):
     })
 
 
-def host_allowed(current_url: str, game_url: str):
+def game_host_allowed(current_url: str, game_url: str):
     current = urlparse(current_url)
     game = urlparse(game_url)
-    app_host = urlparse(APP_ORIGIN).hostname
-    if current.hostname in {"127.0.0.1", "localhost", app_host}:
-        return True
     if not current.hostname or not game.hostname:
         return False
-    return current.hostname == game.hostname or current.hostname.endswith(f".{game.hostname}")
+    current_host = current.hostname.lower().removeprefix("www.")
+    game_host = game.hostname.lower().removeprefix("www.")
+    return (
+        current_host == game_host
+        or current_host.endswith(f".{game_host}")
+        or game_host.endswith(f".{current_host}")
+    )
 
 
 class KioskBrowser:
@@ -286,7 +292,7 @@ def main():
                     browser.launch(target)
                 else:
                     current = browser_url()
-                    if current and not host_allowed(current, target):
+                    if current and not game_host_allowed(current, target):
                         browser.close()
                         browser.launch(target)
                     elif current:

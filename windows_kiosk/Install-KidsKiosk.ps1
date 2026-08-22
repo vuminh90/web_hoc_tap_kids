@@ -16,7 +16,8 @@ if (-not $user.Enabled) { throw "Account '$StandardUser' is disabled." }
 if (-not (Test-Path $SourceExe)) { throw "KidsKiosk.exe was not found at $SourceExe" }
 
 $installDir = Join-Path $env:ProgramFiles 'KidsKiosk'
-$installExe = Join-Path $installDir 'KidsKiosk.exe'
+$versionHash = (Get-FileHash $SourceExe -Algorithm SHA256).Hash.Substring(0, 12)
+$installExe = Join-Path $installDir "KidsKiosk-$versionHash.exe"
 $taskName = 'KidsKiosk - Standard User'
 $account = "$env:COMPUTERNAME\$StandardUser"
 
@@ -31,6 +32,13 @@ $taskPrincipal = New-ScheduledTaskPrincipal -UserId $account -LogonType Interact
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $taskPrincipal -Settings $settings -Description 'Start Kids Kiosk when the learning account signs in.' -Force | Out-Null
+
+# Old versions may remain locked until their process exits. Remove only versions
+# that Windows currently allows us to delete; the active task always points to
+# the newly installed version above.
+Get-ChildItem $installDir -Filter 'KidsKiosk-*.exe' |
+    Where-Object { $_.FullName -ne $installExe } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
 
 Write-Host "KidsKiosk installed for account: $account" -ForegroundColor Green
 Write-Host 'Remove the old Windows Assigned Access configuration, then sign out and sign in to the Standard account.' -ForegroundColor Yellow
