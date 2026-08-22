@@ -24,6 +24,8 @@ API_ORIGIN = os.getenv("KIDS_API_ORIGIN", APP_ORIGIN).rstrip("/")
 DEBUG_PORT = int(os.getenv("KIDS_KIOSK_DEBUG_PORT", "9222"))
 STUDENTS = ("vuanhduc", "vuanhthu")
 POLL_SECONDS = 2
+LAUNCH_GRACE_SECONDS = 10
+MAX_URL_MISMATCHES = 4
 IS_WINDOWS = platform.system() == "Windows"
 PROFILE_ROOT = os.getenv("KIDS_KIOSK_STATE_DIR")
 if not PROFILE_ROOT:
@@ -96,6 +98,17 @@ def api_get(path: str, student: str):
         return json.load(response)
 
 
+def api_post(path: str, student: str):
+    request = urllib.request.Request(
+        f"{API_ORIGIN}{path}",
+        data=b"",
+        headers={**HTTP_HEADERS, "X-Student": student},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=5) as response:
+        return json.load(response)
+
+
 def active_game():
     active_sessions = []
     for student in STUDENTS:
@@ -119,9 +132,24 @@ def browser_tabs():
         return []
 
 
+def browser_pages():
+    return [tab for tab in browser_tabs() if tab.get("type") == "page"]
+
+
 def browser_url():
-    pages = [tab for tab in browser_tabs() if tab.get("type") == "page"]
+    pages = browser_pages()
     return pages[0].get("url", "") if pages else ""
+
+
+def game_page(game_url: str):
+    return next(
+        (tab for tab in browser_pages() if game_host_allowed(tab.get("url", ""), game_url)),
+        None,
+    )
+
+
+def browser_urls():
+    return [tab.get("url", "") for tab in browser_pages()]
 
 
 def websocket_send_json(websocket_url: str, payload: dict):
@@ -129,8 +157,9 @@ def websocket_send_json(websocket_url: str, payload: dict):
     connection = socket.create_connection((parsed.hostname, parsed.port or 80), timeout=2)
     try:
         key = base64.b64encode(os.urandom(16)).decode()
+        target = parsed.path if not parsed.query else f"{parsed.path}?{parsed.query}"
         request = (
-            f"GET {parsed.path}?{parsed.query} HTTP/1.1\r\n"
+            f"GET {target} HTTP/1.1\r\n"
             f"Host: {parsed.hostname}:{parsed.port or 80}\r\n"
             "Upgrade: websocket\r\nConnection: Upgrade\r\n"
             f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
@@ -160,40 +189,101 @@ def websocket_send_json(websocket_url: str, payload: dict):
         connection.close()
 
 
-def inject_timer(seconds: int, game_name: str):
-    pages = [tab for tab in browser_tabs() if tab.get("type") == "page" and tab.get("webSocketDebuggerUrl")]
+def inject_timer(seconds: int, game_name: str, game_url: str):
+    pages = [
+        tab for tab in browser_pages()
+        if tab.get("webSocketDebuggerUrl") and game_host_allowed(tab.get("url", ""), game_url)
+    ]
     if not pages:
         return False
     deadline = int(time.time() * 1000) + max(0, int(seconds)) * 1000
+    stop_url = f"{APP_ORIGIN}/play/stop?kiosk=1"
     script = f"""
 (() => {{
   const id = 'kids-kiosk-countdown';
+  const backId = 'kids-kiosk-back';
   let timer = document.getElementById(id);
+  let back = document.getElementById(backId);
   if (!timer) {{
     timer = document.createElement('div');
     timer.id = id;
     timer.setAttribute('role', 'timer');
-    timer.style.cssText = 'position:fixed;top:14px;right:18px;z-index:2147483647;padding:12px 18px;border-radius:16px;background:#263238;color:white;font:700 22px Arial,sans-serif;box-shadow:0 5px 18px rgba(0,0,0,.38);border:3px solid #80DEEA;pointer-events:none;';
     document.documentElement.appendChild(timer);
   }}
+  if (!back) {{
+    back = document.createElement('button');
+    back.id = backId;
+    back.type = 'button';
+    document.documentElement.appendChild(back);
+  }}
+  timer.style.cssText = [
+    'position:fixed',
+    'top:14px',
+    'right:18px',
+    'z-index:2147483647',
+    'display:flex',
+    'align-items:center',
+    'gap:8px',
+    'padding:12px 18px',
+    'border-radius:999px',
+    'background:#111827',
+    'color:#FFFFFF',
+    'font:800 24px Arial,sans-serif',
+    'line-height:1',
+    'letter-spacing:0',
+    'box-shadow:0 6px 22px rgba(0,0,0,.45)',
+    'border:4px solid #FDD835',
+    'pointer-events:none',
+    'user-select:none',
+    'opacity:.98'
+  ].join(';');
+  back.style.cssText = [
+    'position:fixed',
+    'top:14px',
+    'left:18px',
+    'z-index:2147483647',
+    'padding:12px 18px',
+    'border-radius:999px',
+    'background:#111827',
+    'color:#FFFFFF',
+    'font:800 22px Arial,sans-serif',
+    'line-height:1',
+    'letter-spacing:0',
+    'box-shadow:0 6px 22px rgba(0,0,0,.45)',
+    'border:4px solid #FDD835',
+    'cursor:pointer',
+    'user-select:none',
+    'opacity:.98'
+  ].join(';');
+  back.textContent = 'Quay lai';
+  back.setAttribute('aria-label', 'Quay lai khu vui choi');
+  back.onclick = () => {{
+    back.disabled = true;
+    back.textContent = 'Dang quay lai...';
+    window.location.href = {json.dumps(stop_url)};
+  }};
   timer.dataset.deadline = '{deadline}';
   timer.dataset.game = {json.dumps(game_name)};
   const render = () => {{
     const left = Math.max(0, Math.ceil((Number(timer.dataset.deadline) - Date.now()) / 1000));
     const minutes = Math.floor(left / 60);
     const secs = String(left % 60).padStart(2, '0');
-    timer.textContent = `⏱ ${{minutes}}:${{secs}}`;
-    timer.style.background = left <= 60 ? '#C62828' : '#263238';
+    timer.textContent = `Con lai ${{minutes}}:${{secs}}`;
+    timer.style.background = left <= 60 ? '#B91C1C' : '#111827';
+    timer.style.borderColor = left <= 60 ? '#FFFFFF' : '#FDD835';
   }};
   render();
   if (!window.__kidsKioskTimerInterval) window.__kidsKioskTimerInterval = setInterval(render, 250);
 }})();
 """
-    return websocket_send_json(pages[0]["webSocketDebuggerUrl"], {
-        "id": int(time.time() * 1000) % 1000000,
-        "method": "Runtime.evaluate",
-        "params": {"expression": script},
-    })
+    injected = False
+    for index, page in enumerate(pages):
+        injected = websocket_send_json(page["webSocketDebuggerUrl"], {
+            "id": (int(time.time() * 1000) + index) % 1000000,
+            "method": "Runtime.evaluate",
+            "params": {"expression": script},
+        }) or injected
+    return injected
 
 
 def game_host_allowed(current_url: str, game_url: str):
@@ -210,10 +300,35 @@ def game_host_allowed(current_url: str, game_url: str):
     )
 
 
+def is_transient_browser_url(current_url: str):
+    if not current_url:
+        return True
+    parsed = urlparse(current_url)
+    return parsed.scheme in ("", "about", "edge", "chrome", "devtools")
+
+
+def is_stop_request(current_url: str):
+    if not current_url:
+        return False
+    current = urlparse(current_url)
+    app = urlparse(APP_ORIGIN)
+    return (
+        current.hostname == app.hostname
+        and (current.port or default_port(current.scheme)) == (app.port or default_port(app.scheme))
+        and current.path == "/play/stop"
+    )
+
+
+def default_port(scheme: str):
+    return 443 if scheme == "https" else 80
+
+
 class KioskBrowser:
     def __init__(self):
         self.browser = find_browser()
         self.process = None
+        self.last_launch_at = 0
+        self.url_mismatches = 0
 
     def launch(self, url: str):
         PROFILE_DIR.mkdir(parents=True, exist_ok=True)
@@ -229,6 +344,9 @@ class KioskBrowser:
             if hasattr(os, "geteuid") and os.geteuid() == 0:
                 args.append("--no-sandbox")
             self.process = subprocess.Popen(args, start_new_session=True)
+        self.last_launch_at = time.time()
+        self.url_mismatches = 0
+        log(f"Launched browser: {url}")
 
     def running(self):
         return self.process is not None and self.process.poll() is None
@@ -250,6 +368,7 @@ class KioskBrowser:
             except ProcessLookupError:
                 pass
         self.process = None
+        self.url_mismatches = 0
 
 
 def wait_for_server():
@@ -285,18 +404,41 @@ def main():
             except OSError:
                 active = None
             if active:
-                _, wallet, site = active
+                student, wallet, site = active
                 target = site["url"]
                 last_had_game = True
                 if not browser.running():
                     browser.launch(target)
                 else:
-                    current = browser_url()
-                    if current and not game_host_allowed(current, target):
+                    requested_url = browser_url()
+                    if is_stop_request(requested_url):
+                        try:
+                            api_post("/api/play/sessions/stop", student)
+                            log(f"Stopped play session by back button: {student}")
+                        except OSError as error:
+                            log(f"Failed to stop play session by back button: {error}")
                         browser.close()
-                        browser.launch(target)
-                    elif current:
-                        inject_timer(wallet.get("balanceSeconds", 0), site.get("name", "Game"))
+                        browser.launch(f"{APP_ORIGIN}/play?kiosk=1")
+                        last_had_game = False
+                        time.sleep(POLL_SECONDS)
+                        continue
+                    allowed_page = game_page(target)
+                    current = allowed_page.get("url", "") if allowed_page else browser_url()
+                    launch_age = time.time() - browser.last_launch_at
+                    if allowed_page:
+                        browser.url_mismatches = 0
+                        inject_timer(wallet.get("balanceSeconds", 0), site.get("name", "Game"), target)
+                    elif is_transient_browser_url(current) or launch_age < LAUNCH_GRACE_SECONDS:
+                        browser.url_mismatches = 0
+                    else:
+                        browser.url_mismatches += 1
+                        log(
+                            f"Game URL mismatch {browser.url_mismatches}/{MAX_URL_MISMATCHES}: "
+                            f"current={current} target={target} pages={browser_urls()}"
+                        )
+                        if browser.url_mismatches >= MAX_URL_MISMATCHES:
+                            browser.close()
+                            browser.launch(target)
             else:
                 target = f"{APP_ORIGIN}/play/locked?kiosk=1" if last_had_game else f"{APP_ORIGIN}/?kiosk=1"
                 if last_had_game or not browser.running():
