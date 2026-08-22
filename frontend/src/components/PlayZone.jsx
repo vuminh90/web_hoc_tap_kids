@@ -9,6 +9,7 @@ export default function PlayZone() {
   const [error, setError] = useState('');
   const [loadingSite, setLoadingSite] = useState('');
   const username = localStorage.getItem('currentUser') || 'vuanhduc';
+  const kioskMode = localStorage.getItem('kidsKioskMode') === 'true';
   const childName = username === 'vuanhduc' ? 'Anh Đức' : 'Anh Thư';
 
   useEffect(() => {
@@ -17,7 +18,8 @@ export default function PlayZone() {
       setSites(siteData);
       if (walletData.session?.status === 'active') {
         const activeSite = siteData.find(site => site.id === walletData.session.site_id);
-        if (activeSite?.open_mode === 'iframe') navigate(`/play/session/${activeSite.id}`, { replace: true });
+        if (activeSite && kioskMode) window.location.replace(activeSite.url);
+        else if (activeSite?.open_mode === 'iframe') navigate(`/play/session/${activeSite.id}`, { replace: true });
       }
     }).catch(err => setError(err.message));
   }, [navigate]);
@@ -25,8 +27,7 @@ export default function PlayZone() {
   const play = async (site) => {
     setLoadingSite(site.id);
     setError('');
-    const useIframe = site.open_mode === 'iframe';
-    const kioskMode = localStorage.getItem('kidsKioskMode') === 'true';
+    const useIframe = !kioskMode && site.open_mode === 'iframe';
     if (!useIframe && !kioskMode) {
       setLoadingSite('');
       return setError('Website này cần chế độ kiosk. Hãy mở ứng dụng bằng start_kiosk.bat.');
